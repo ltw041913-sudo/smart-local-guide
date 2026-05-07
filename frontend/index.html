@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title data-i18n="nav_brand">在地導覽平台</title>
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="js/i18n.js"></script>
+</head>
+<body>
+
+    <nav>
+        <div class="nav-brand" onclick="app.showHome()" data-i18n="nav_brand">在地導覽平台</div>
+        <div class="nav-user">
+            <select id="lang-selector" onchange="app.changeLanguage(this.value)">
+                <option value="zh-TW">繁體中文</option>
+                <option value="en">English</option>
+                <option value="ja">日本語</option>
+            </select>
+            <select id="user-role" onchange="app.switchUser(this.value)">
+                <option value="guest" data-i18n-option="role_guest">訪客</option>
+                <option value="traveler_john" data-i18n-option="role_traveler">遊客 John</option>
+                <option value="cafe_owner" data-i18n-option="role_cafe_owner">咖啡館主</option>
+                <option value="store_owner" data-i18n-option="role_store_owner">文創店主</option>
+            </select>
+        </div>
+    </nav>
+
+    <div id="view-home" class="view active">
+        <div class="hero" id="hero-main" onclick="app.jumpToMerchant()">
+            <div id="hero-track" class="hero-track"></div>
+            <div class="hero-content">
+                <p data-i18n="hero_badge" style="background: var(--retro-red); margin-bottom: 1rem;">✨ 嚴選在地故事</p>
+                <h1 id="hero-title"></h1>
+                <p id="hero-subtitle"></p>
+            </div>
+        </div>
+        
+        <div style="margin-top: 4rem;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 2rem; margin-left: 3rem; margin-right: 3rem;">
+                <h2 data-i18n="map_title" style="font-size: 2rem; font-weight: 800; color: var(--forest-green);">📍 探索導覽地圖</h2>
+                <p data-i18n="map_subtitle" style="color: var(--text-muted);">發掘您周邊的文化亮點與職人故事</p>
+            </div>
+            <div class="grid-layout">
+                <div class="sidebar">
+                    <div style="position: sticky; top: 120px;">
+                        <input type="text" id="search-input" class="search-box" data-i18n-placeholder="search_placeholder" placeholder="搜尋店名、類別或標籤..." onkeyup="app.filterMerchants()">
+
+                        <!-- AI Trip Planner Button -->
+                        <button class="btn btn-primary" onclick="app.togglePlanningMode()" id="btn-trip-planner" data-i18n="btn_trip_planner" style="width: 100%; margin-bottom: 1rem; background: var(--forest-green); justify-content: center;">🤖 開始 AI 智慧規劃行程</button>
+
+                        <button class="btn btn-primary" id="btn-add-merchant" data-i18n="btn_add_merchant" style="display:none; width:100%; margin-bottom:1.5rem; justify-content: center;" onclick="app.openAddModal()">✨ 註冊新店家</button>
+
+                        <!-- Trip Selection Bar -->
+                        <div id="trip-selection-bar" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #fff; border: 2px dashed #c0392b; border-radius: 12px; text-align: center;">
+                            <p style="font-size: 0.8rem; color: #c0392b; margin-bottom: 0.8rem; font-weight: bold;">
+                                <span data-i18n="trip_selected_count">已選定</span>
+                                <span id="selected-count">0</span>
+                                <span data-i18n="trip_selected_unit">個地點</span>
+                            </p>
+                            <button class="btn btn-primary" onclick="app.generateTrip()" data-i18n="btn_generate_trip" style="width: 100%; background: #c0392b; font-size: 0.9rem;">✨ 生成深度旅遊路線</button>
+                        </div>
+
+                        <ul class="merchant-list" id="merchant-list"></ul>
+                    </div>
+                </div>
+                <div class="map-container">
+                    <iframe id="map-iframe" src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d115681!2d121.463!3d25.033!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x3442a9727e339109%3A0xc34a31ce3a4abecb!2z5Y-w5YyX5biC!5e0!3m2!1szh-TW!2stw!4v1714000000000!5m2!1szh-TW!2stw" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="view-detail" class="view">
+        <button class="btn btn-primary" onclick="app.showHome()" data-i18n="btn_back" style="background: white; color: var(--forest-green); border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm);">← 返回列表</button>
+        <div id="detail-content" style="margin-top: 2rem;"></div>
+    </div>
+
+    <div class="modal-overlay" id="add-overlay" onclick="app.closeAddModal()"></div>
+    <div class="ai-modal" id="add-modal">
+        <h2 data-i18n="modal_add_title">註冊新店家</h2>
+        <div style="margin-top:1rem;">
+            <p><span data-i18n="label_name">店名：</span><input type="text" id="add-name" class="search-box"></p>
+            <p><span data-i18n="label_category">類別：</span><input type="text" id="add-category" class="search-box"></p>
+            <p><span data-i18n="label_address">地址：</span><input type="text" id="add-address" class="search-box"></p>
+            <p><span data-i18n="label_hours">營業：</span><input type="text" id="add-hours" class="search-box"></p>
+            <button class="btn btn-primary" onclick="app.submitNewMerchant()" data-i18n="btn_add_submit" style="width:100%; justify-content: center;">✨ 確認註冊</button>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="edit-overlay" onclick="app.closeEditModal()"></div>
+    <div class="ai-modal" id="edit-modal">
+        <h2 data-i18n="modal_edit_title">編輯店家</h2>
+        <div style="margin-top:1rem;">
+            <p><span data-i18n="label_name">店名：</span><input type="text" id="edit-name" class="search-box"></p>
+            <p><span data-i18n="label_address">地址：</span><input type="text" id="edit-address" class="search-box"></p>
+            <p><span data-i18n="label_hours">營業：</span><input type="text" id="edit-hours" class="search-box"></p>
+            <p><span data-i18n="label_announcement">公告：</span><input type="text" id="edit-announcement" class="search-box"></p>
+            <button onclick="app.refineAnnouncement()" data-i18n="btn_ai_refine" style="width:100%; margin-bottom:0.8rem; padding:0.6rem; background: linear-gradient(135deg, #2d5a27, #4a8540); color:white; border:none; border-radius:8px; cursor:pointer; font-size:0.85rem;">✨ AI 潤飾文案（將公告轉化為文化故事）</button>
+            <p><span data-i18n="label_description">描述：</span><textarea id="edit-description" class="search-box" style="height:100px;"></textarea></p>
+            <button class="btn btn-edit" onclick="app.submitEditMerchant()" data-i18n="btn_save" style="width:100%; justify-content: center;">💾 儲存變更</button>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+
+    <!-- AI Trip Planner Modal -->
+    <div class="modal-overlay" id="trip-overlay" onclick="app.closeTripModal()"></div>
+    <div class="ai-modal" id="trip-modal" style="max-width: 650px;">
+        <button class="modal-close" onclick="app.closeTripModal()">×</button>
+        <h2 data-i18n="modal_trip_title">📅 AI 智慧行程規劃</h2>
+        <div id="trip-result" class="markdown-body" style="margin-top: 1rem; max-height: 60vh; overflow-y: auto; padding: 1rem; background: #f8fafc; border-radius: 8px;">
+            <i data-i18n="trip_loading">正在為您規劃深度旅遊行程...</i>
+        </div>
+        <button class="btn btn-primary" onclick="app.closeTripModal()" data-i18n="btn_trip_done" style="width: 100%; margin-top: 1rem; justify-content: center;">完成</button>
+    </div>
+
+
+    <!-- Floating AI Chat Bot -->
+    <div id="ai-chat-btn" onclick="app.toggleChat()" style="
+        position: fixed; bottom: 2rem; right: 2rem; z-index: 1000;
+        width: 60px; height: 60px; border-radius: 50%;
+        background: linear-gradient(135deg, #2d5a27, #4a8540);
+        display: flex; align-items: center; justify-content: center;
+        cursor: pointer; box-shadow: 0 4px 20px rgba(45,90,39,0.4);
+        font-size: 1.6rem; transition: transform 0.2s ease;
+    " title="AI 在地客服">🤖</div>
+
+    <div id="ai-chat-window" style="
+        position: fixed; bottom: 6rem; right: 2rem; z-index: 999;
+        width: 340px; background: white; border-radius: 16px;
+        box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+        display: none; flex-direction: column; overflow: hidden;
+        border: 1px solid #e2e8f0;
+    ">
+        <div style="background: linear-gradient(135deg, #2d5a27, #4a8540); padding: 1rem 1.2rem; color: white; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+                <strong data-i18n="chat_title" style="font-size:1rem;">🤖 AI 在地嚮導</strong>
+                <p data-i18n="chat_subtitle" style="font-size:0.75rem; opacity:0.85; margin:2px 0 0;">可以詢問任何在地問題！</p>
+            </div>
+            <span data-i18n="chat_close" onclick="app.toggleChat()" style="cursor:pointer; font-size:1.2rem; opacity:0.8;">✕</span>
+        </div>
+        <div id="chat-messages" style="
+            flex:1; height: 280px; overflow-y: auto;
+            padding: 1rem; display: flex; flex-direction: column; gap: 0.6rem;
+            background: #f8fafc;
+        ">
+            <div id="chat-welcome-msg" style="background: #e8f5e9; padding: 0.7rem 1rem; border-radius: 12px; border-bottom-left-radius: 4px; font-size: 0.85rem; color: #2d5a27; max-width: 85%;" data-i18n="chat_welcome">
+                你好！我是 AI 在地嚮導，可以問我：「哪間咖啡廳還有開？」或「推薦適合親子的店家」等問題！
+            </div>
+        </div>
+        <div style="padding: 0.8rem; border-top: 1px solid #e2e8f0; display: flex; gap: 8px; background: white;">
+            <input id="chat-input" type="text" data-i18n-placeholder="chat_placeholder" placeholder="輸入您的問題..." onkeydown="if(event.key==='Enter') app.sendChatMessage()" style="
+                flex:1; padding: 0.6rem 0.9rem; border: 1px solid #e2e8f0;
+                border-radius: 20px; font-size: 0.85rem; outline: none;
+            ">
+            <button data-i18n="btn_chat_send" onclick="app.sendChatMessage()" style="
+                background: linear-gradient(135deg, #2d5a27, #4a8540);
+                color: white; border: none; border-radius: 20px;
+                padding: 0.6rem 1rem; cursor: pointer; font-size: 0.85rem;
+            ">發送</button>
+        </div>
+    </div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
