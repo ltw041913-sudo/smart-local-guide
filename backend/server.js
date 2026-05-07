@@ -68,11 +68,9 @@ app.get('/api/users/:username', (req, res) => {
 // 服务前端静态文件
 app.use(express.static(path.join(__dirname, '../frontend')));
 
-// 所有非 API 请求都返回前端首页
-app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, '../frontend/index.html'));
-    }
+// 所有其他請求都導向 index.html (SPA 路由)
+app.get('(.*)', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
 app.listen(port, () => {
