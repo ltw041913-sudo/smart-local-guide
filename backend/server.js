@@ -69,7 +69,7 @@ app.get('/api/users/:username', (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 // 所有其他請求都導向 index.html (SPA 路由)
-app.get('(.*)', (req, res) => {
+app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
 });
 
