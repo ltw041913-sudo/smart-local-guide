@@ -126,6 +126,13 @@ const app = {
 
                 <div class="grid-layout">
                     <div class="main-content">
+                        ${merchant.panoramaUrl ? `
+                        <div class="panorama-section" style="margin-bottom: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: var(--forest-green); display: flex; align-items: center; gap: 0.5rem;">🌐 360° 全景導覽</h3>
+                            <div id="panorama-viewer" style="width: 100%; height: 350px; background: #000; border-radius: 12px; overflow: hidden;"></div>
+                        </div>
+                        ` : ''}
+                        
                         <div id="audio-guide-section" style="margin-bottom: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
                             <h3 style="margin-bottom: 1rem; color: var(--forest-green); display: flex; align-items: center; gap: 0.5rem;">${t('audio_title')}</h3>
                             <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;" id="audio-controls">
@@ -159,6 +166,37 @@ const app = {
                     </div>
                 </div>
             `;
+
+            // Initialize panorama if URL exists
+            if (merchant.panoramaUrl) {
+                setTimeout(() => {
+                    let config = {
+                        "type": "equirectangular",
+                        "panorama": merchant.panoramaUrl,
+                        "autoLoad": true,
+                        "autoRotate": -2
+                    };
+
+                    // Try to parse as JSON for cubemap
+                    try {
+                        if (merchant.panoramaUrl.startsWith('[')) {
+                            const paths = JSON.parse(merchant.panoramaUrl);
+                            if (Array.isArray(paths) && paths.length === 6) {
+                                config = {
+                                    "type": "cubemap",
+                                    "cubeMap": paths,
+                                    "autoLoad": true,
+                                    "autoRotate": -2
+                                };
+                            }
+                        }
+                    } catch (e) {
+                        console.log("Not a JSON panorama URL, using equirectangular");
+                    }
+
+                    pannellum.viewer('panorama-viewer', config);
+                }, 100);
+            }
         } catch (e) { console.error(e); }
     },
 
@@ -212,10 +250,29 @@ const app = {
         const category = document.getElementById('add-category').value;
         const address = document.getElementById('add-address').value;
         const hours = document.getElementById('add-hours').value;
+        
+        const cubemapFiles = {
+            front: document.getElementById('add-cubemap-front').files[0],
+            right: document.getElementById('add-cubemap-right').files[0],
+            back: document.getElementById('add-cubemap-back').files[0],
+            left: document.getElementById('add-cubemap-left').files[0],
+            up: document.getElementById('add-cubemap-up').files[0],
+            down: document.getElementById('add-cubemap-down').files[0]
+        };
+
         if (!name || !category) return alert(window.i18n.t('alert_required_fields'));
 
         try {
-            await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, lat: 25.033, lng: 121.565 });
+            let panoramaUrl = '';
+            // Check if all 6 cubemap files are selected
+            const hasCubemap = Object.values(cubemapFiles).every(f => f);
+            
+            if (hasCubemap) {
+                const uploadRes = await api.uploadCubemap(cubemapFiles);
+                panoramaUrl = JSON.stringify(uploadRes.paths);
+            }
+            
+            await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, lat: 25.033, lng: 121.565, panoramaUrl });
             this.closeAddModal();
             await this.loadMerchants();
             this.renderMerchants();
@@ -229,6 +286,11 @@ const app = {
         document.getElementById('edit-hours').value = m.openingHours || '';
         document.getElementById('edit-announcement').value = m.announcement || '';
         document.getElementById('edit-description').value = m.description || '';
+        // Reset file inputs
+        ['front', 'right', 'back', 'left', 'up', 'down'].forEach(face => {
+            const el = document.getElementById(`edit-cubemap-${face}`);
+            if (el) el.value = '';
+        });
         document.getElementById('edit-modal').dataset.merchantId = id;
         document.getElementById('edit-overlay').classList.add('active');
         document.getElementById('edit-modal').classList.add('active');
@@ -246,9 +308,26 @@ const app = {
         const hours = document.getElementById('edit-hours').value;
         const announcement = document.getElementById('edit-announcement').value;
         const description = document.getElementById('edit-description').value;
+        
+        const cubemapFiles = {
+            front: document.getElementById('edit-cubemap-front').files[0],
+            right: document.getElementById('edit-cubemap-right').files[0],
+            back: document.getElementById('edit-cubemap-back').files[0],
+            left: document.getElementById('edit-cubemap-left').files[0],
+            up: document.getElementById('edit-cubemap-up').files[0],
+            down: document.getElementById('edit-cubemap-down').files[0]
+        };
 
         try {
-            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: this.currentUser.id });
+            let panoramaUrl = this.merchants.find(m => m.id == id).panoramaUrl || '';
+            const hasCubemap = Object.values(cubemapFiles).every(f => f);
+            
+            if (hasCubemap) {
+                const uploadRes = await api.uploadCubemap(cubemapFiles);
+                panoramaUrl = JSON.stringify(uploadRes.paths);
+            }
+            
+            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: this.currentUser.id, panoramaUrl });
             
             // 1. Reload global data to sync list and hero
             await this.loadMerchants();

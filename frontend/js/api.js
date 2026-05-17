@@ -1,5 +1,4 @@
-// 本地开发用 localhost:3000，部署后自动使用相对路径
-const API_BASE = window.location.hostname === 'localhost' 
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '' || window.location.protocol === 'file:') 
     ? 'http://localhost:3000/api' 
     : '/api';
 
@@ -79,6 +78,30 @@ const api = {
         });
         const data = await res.json();
         return data.itinerary;
+    },
+
+    async uploadImage(file) {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await fetch(`${API_BASE}/upload`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Upload failed');
+        return res.json(); // { filePath: '/uploads/...' }
+    },
+
+    async uploadCubemap(files) {
+        const formData = new FormData();
+        for (const face in files) {
+            if (files[face]) formData.append(face, files[face]);
+        }
+        const res = await fetch(`${API_BASE}/upload-cubemap`, {
+            method: 'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Cubemap upload failed');
+        return res.json(); // { paths: [...] }
     }
 };
 

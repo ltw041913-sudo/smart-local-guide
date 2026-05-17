@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>360° 全景導覽 | Smart Local Guide</title>
+    <!-- Pannellum CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.7/build/pannellum.css"/>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="panorama-container">
+        <div id="panorama"></div>
+        
+        <!-- UI Overlay -->
+        <div class="ui-overlay">
+            <header>
+                <h1>360° 全景探索</h1>
+                <p>沉浸式體驗在地美景</p>
+            </header>
+            
+            <div class="controls-hint">
+                <div class="hint-item">
+                    <span class="icon">🖱️</span>
+                    <span>拖曳旋轉</span>
+                </div>
+                <div class="hint-item">
+                    <span class="icon">🔍</span>
+                    <span>滾動縮放</span>
+                </div>
+            </div>
+
+            <footer>
+                <a href="../index.html" class="back-button">
+                    <span class="icon">←</span> 返回主頁
+                </a>
+            </footer>
+        </div>
+    </div>
+
+    <!-- Pannellum JS -->
+    <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.7/build/pannellum.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
