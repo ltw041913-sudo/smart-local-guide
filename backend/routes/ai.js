@@ -60,7 +60,7 @@ router.post('/refine-announcement', async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `
         你是一位專業的文化推廣與社群文案大師。
@@ -91,7 +91,7 @@ router.post('/ask-bot', async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const prompt = `
         你是一位熱情且專業的「在地旅遊小助手」。你對當地的所有店家與文化瞭如指掌。
@@ -125,7 +125,7 @@ router.post('/plan-story', async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
         const langMap = { 'zh-TW': '繁體中文 (Traditional Chinese)', 'en': '英文 (English)', 'ja': '日文 (Japanese)' };
         const outputLang = langMap[lang] || '繁體中文';

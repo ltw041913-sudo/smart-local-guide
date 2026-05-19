@@ -8,7 +8,7 @@ const app = {
 
     async init() {
         this.applyTranslations();
-        await this.switchUser('guest');
+        await this.checkAuthState();
         await this.loadMerchants();
         this.renderMerchants();
         this.startHeroSlideshow();
@@ -44,18 +44,32 @@ const app = {
         if (titleEl) document.title = window.i18n.t(titleEl.dataset.i18n);
     },
 
-    async switchUser(username) {
+    async checkAuthState() {
         try {
-            this.currentUser = await api.getUser(username);
+            const storedUser = localStorage.getItem('currentUser');
+            if (storedUser) {
+                this.currentUser = JSON.parse(storedUser);
+                document.getElementById('auth-logged-out').style.display = 'none';
+                document.getElementById('auth-logged-in').style.display = 'flex';
+                document.getElementById('auth-username').textContent = this.currentUser.username;
+            } else {
+                this.currentUser = { role: 'unregistered', username: 'guest' };
+                document.getElementById('auth-logged-out').style.display = 'flex';
+                document.getElementById('auth-logged-in').style.display = 'none';
+            }
+
             const btnAdd = document.getElementById('btn-add-merchant');
-            if (this.currentUser && this.currentUser.role !== 'guest') {
+            if (this.currentUser && (this.currentUser.role === 'owner' || this.currentUser.role === 'admin')) {
                 if(btnAdd) btnAdd.style.display = 'block';
             } else {
                 if(btnAdd) btnAdd.style.display = 'none';
             }
-            await this.loadMerchants();
-            this.renderMerchants();
         } catch (e) { console.error(e); }
+    },
+
+    logout() {
+        localStorage.removeItem('currentUser');
+        window.location.reload();
     },
 
     async loadMerchants() {
@@ -111,7 +125,7 @@ const app = {
         try {
             const merchant = await api.getMerchant(id);
             const content = document.getElementById('detail-content');
-            const isOwner = this.currentUser && this.currentUser.id === merchant.ownerId;
+            const isOwner = this.currentUser && (this.currentUser.id === merchant.ownerId || this.currentUser.role === 'admin');
 
             const t = (key) => window.i18n.t(key);
             content.innerHTML = `
@@ -162,7 +176,12 @@ const app = {
                                 <iframe width="100%" height="100%" frameborder="0" src="https://www.google.com/maps?q=${merchant.lat},${merchant.lng}&hl=zh-TW&z=15&output=embed"></iframe>
                             </div>
                         </div>
-                        ${isOwner ? `<button class="btn btn-edit" onclick="app.openEditModal(${merchant.id})" style="width: auto; padding: 0.8rem 2rem;">${t('btn_edit_merchant')}</button>` : ''}
+                        ${isOwner ? `
+                            <div style="display:flex; gap:10px; margin-top: 2rem;">
+                                <button class="btn btn-edit" onclick="app.openEditModal(${merchant.id})" style="flex:1; margin-top:0;">${t('btn_edit_merchant')}</button>
+                                <button class="btn" onclick="app.deleteMerchant(${merchant.id})" style="flex:1; background: var(--retro-red); color: white; justify-content: center;">刪除店家</button>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -319,7 +338,8 @@ const app = {
         };
 
         try {
-            let panoramaUrl = this.merchants.find(m => m.id == id).panoramaUrl || '';
+            let targetMerchant = this.merchants.find(m => m.id == id);
+            let panoramaUrl = targetMerchant.panoramaUrl || '';
             const hasCubemap = Object.values(cubemapFiles).every(f => f);
             
             if (hasCubemap) {
@@ -327,7 +347,8 @@ const app = {
                 panoramaUrl = JSON.stringify(uploadRes.paths);
             }
             
-            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: this.currentUser.id, panoramaUrl });
+            // 使用原本店家的 ownerId，這樣即便 admin 去編輯也不會因為身分不符而 SQL 失敗
+            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: targetMerchant.ownerId, panoramaUrl });
             
             // 1. Reload global data to sync list and hero
             await this.loadMerchants();
@@ -339,6 +360,21 @@ const app = {
             this.closeEditModal();
             console.log("Merchant updated and synced successfully.");
         } catch (e) { alert(e.message); }
+    },
+
+    async deleteMerchant(id) {
+        if (confirm("確定要刪除這個店家嗎？此操作無法還原。")) {
+            try {
+                await api.deleteMerchant(id);
+                alert("店家已成功刪除");
+                await this.loadMerchants();
+                this.renderMerchants();
+                this.startHeroSlideshow();
+                this.showHome();
+            } catch (e) {
+                alert("刪除失敗: " + e.message);
+            }
+        }
     },
 
     filterMerchants() {

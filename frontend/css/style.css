@@ -629,5 +629,109 @@ nav {
     cursor: pointer;
     font-weight: bold;
 }
-. p a n o r a m a - s e c t i o n   {   b a c k g r o u n d :   w h i t e ;   p a d d i n g :   1 . 5 r e m ;   b o r d e r - r a d i u s :   1 2 p x ;   b o x - s h a d o w :   0   4 p x   2 0 p x   r g b a ( 0 , 0 , 0 , 0 . 0 5 ) ;   m a r g i n - b o t t o m :   2 r e m ;   b o r d e r :   1 p x   s o l i d   # e 2 e 8 f 0 ;   }  
- 
+.panorama-section { background: white; padding: 1.5rem; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); margin-bottom: 2rem; border: 1px solid #e2e8f0; }
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .grid-layout {
+        gap: 1.5rem;
+        grid-template-columns: 300px 1fr;
+    }
+    .view {
+        padding: 2rem;
+    }
+}
+
+@media (max-width: 768px) {
+    nav {
+        padding: 1rem;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .hero {
+        height: 350px;
+        margin: 1rem;
+    }
+    .hero-content {
+        left: 1.5rem;
+        bottom: 1.5rem;
+        right: 1.5rem;
+    }
+    .hero-content h1 {
+        font-size: 2.5rem;
+    }
+    .view {
+        padding: 1rem;
+    }
+    .grid-layout {
+        grid-template-columns: 1fr;
+    }
+    .sidebar {
+        padding: 1rem;
+    }
+    .sidebar > div {
+        position: static !important;
+    }
+    .map-container {
+        height: 400px;
+    }
+    .detail-header {
+        height: 300px;
+        padding: 2rem;
+        margin-bottom: 1.5rem;
+    }
+    .detail-title {
+        font-size: 2.2rem;
+    }
+    .info-card, .announcement-box, #audio-guide-section, .panorama-section {
+        padding: 1.5rem;
+    }
+    .announcement-box {
+        border-radius: var(--radius-md);
+        border-left: none;
+        border-top: 8px solid var(--retro-red);
+    }
+    .ai-modal {
+        padding: 1.5rem;
+    }
+    #ai-chat-window {
+        right: 10px;
+        bottom: 90px;
+        width: calc(100vw - 20px);
+    }
+    .cubemap-inputs > div {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 480px) {
+    .hero {
+        height: 250px;
+    }
+    .hero-content h1 {
+        font-size: 1.8rem;
+    }
+    .hero-content p {
+        font-size: 1rem;
+    }
+    .nav-user {
+        flex-direction: column;
+        width: 100%;
+    }
+    .nav-user select {
+        width: 100%;
+    }
+    .map-container {
+        height: 300px;
+    }
+    .detail-title {
+        font-size: 1.8rem;
+    }
+    #floating-chat-trigger {
+        width: 50px;
+        height: 50px;
+        font-size: 24px;
+        bottom: 15px;
+        right: 15px;
+    }
+}

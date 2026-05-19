@@ -21,12 +21,14 @@
                 <option value="en">English</option>
                 <option value="ja">日本語</option>
             </select>
-            <select id="user-role" onchange="app.switchUser(this.value)">
-                <option value="guest" data-i18n-option="role_guest">訪客</option>
-                <option value="traveler_john" data-i18n-option="role_traveler">遊客 John</option>
-                <option value="cafe_owner" data-i18n-option="role_cafe_owner">咖啡館主</option>
-                <option value="store_owner" data-i18n-option="role_store_owner">文創店主</option>
-            </select>
+            <div id="auth-logged-out" style="display: flex; gap: 10px;">
+                <a href="login.html" class="btn btn-nav-outline" style="text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--forest-green); color: var(--forest-green); background: white;">登入</a>
+                <a href="register.html" class="btn btn-primary" style="text-decoration: none; padding: 0.5rem 1rem;">註冊</a>
+            </div>
+            <div id="auth-logged-in" style="display: none; align-items: center; gap: 15px;">
+                <span id="auth-username" style="font-weight: bold; color: var(--forest-green);"></span>
+                <button onclick="app.logout()" class="btn btn-nav-outline" style="padding: 0.5rem 1rem; border: 1px solid var(--retro-red); color: var(--retro-red); background: white;">登出</button>
+            </div>
         </div>
     </nav>
 

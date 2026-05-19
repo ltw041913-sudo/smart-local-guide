@@ -3,6 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const db = require('./db');
 const aiRoutes = require('./routes/ai');
+const authRoutes = require('./routes/auth');
 const multer = require('multer');
 const fs = require('fs');
 
@@ -22,6 +23,7 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json());
 app.use('/api/ai', aiRoutes);
+app.use('/api/auth', authRoutes);
 
 // Multer Config
 const storage = multer.diskStorage({
@@ -109,6 +111,16 @@ app.put('/api/merchants/:id', async (req, res) => {
             `UPDATE merchants SET name=$1, announcement=$2, description=$3, address=$4, "openingHours"=$5, "panoramaUrl"=$6 WHERE id=$7 AND "ownerId"=$8`,
             [name, announcement, description, address, openingHours, panoramaUrl, req.params.id, ownerId]
         );
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// Delete merchant
+app.delete('/api/merchants/:id', async (req, res) => {
+    try {
+        await db.query('DELETE FROM merchants WHERE id=$1', [req.params.id]);
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

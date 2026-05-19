@@ -31,6 +31,26 @@ const api = {
         return res.json();
     },
 
+    async deleteMerchant(id) {
+        const res = await fetch(`${API_BASE}/merchants/${id}`, {
+            method: 'DELETE'
+        });
+        return res.json();
+    },
+
+    async login(email, password) {
+        const res = await fetch(`${API_BASE}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Login failed');
+        }
+        return data; // { success: true, user: {...} }
+    },
+
     async getUser(username) {
         const res = await fetch(`${API_BASE}/users/${username}`);
         return res.json();
@@ -57,6 +77,9 @@ const api = {
             body: JSON.stringify({ text, lang })
         });
         const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Unknown error');
+        }
         return data.refinedText;
     },
 
@@ -67,6 +90,9 @@ const api = {
             body: JSON.stringify({ question, allMerchants, lang })
         });
         const data = await res.json();
+        if (!res.ok) {
+            throw new Error(data.error || 'Unknown error');
+        }
         return data.answer;
     },
 

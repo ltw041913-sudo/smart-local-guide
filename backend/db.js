@@ -37,11 +37,16 @@ async function initDB() {
         // Create Users Table
         await client.query(`
             CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY,
+                id SERIAL PRIMARY KEY,
                 username TEXT UNIQUE NOT NULL,
                 role TEXT NOT NULL
             )
         `);
+
+        // Add new columns for auth (catching errors if they already exist)
+        try { await client.query(`ALTER TABLE users ADD COLUMN email TEXT UNIQUE`); } catch (e) {}
+        try { await client.query(`ALTER TABLE users ADD COLUMN password_hash TEXT`); } catch (e) {}
+
 
         // Create Stamps Table (Gamification)
         await client.query(`

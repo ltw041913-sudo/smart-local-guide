@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登入 - 在地導覽平台</title>
+    <link rel="stylesheet" href="css/style.css"> 
+    <link rel="stylesheet" href="css/register.css">
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <div class="register-header">
+                <h2>✨ 歡迎回來</h2>
+                <p>登入以繼續探索在地美好故事</p>
+            </div>
+            
+            <form class="register-form" id="login-form">
+                <div class="form-group">
+                    <label for="email">電子郵件</label>
+                    <input type="email" id="email" placeholder="example@email.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密碼</label>
+                    <input type="password" id="password" placeholder="請輸入密碼" required>
+                    <div class="error-msg" id="login-error"></div>
+                </div>
+                
+                <button type="submit" class="btn-register" id="btn-login">登入</button>
+            </form>
+            
+            <div class="register-footer">
+                <p>還沒有帳號嗎？ <a href="register.html">立即註冊</a></p>
+                <p style="margin-top: 10px;"><a href="index.html">返回首頁</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        const form = document.getElementById('login-form');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginError = document.getElementById('login-error');
+        const btnLogin = document.getElementById('btn-login');
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            
+            loginError.textContent = '';
+            passwordInput.classList.remove('input-error');
+            emailInput.classList.remove('input-error');
+            
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            const originalBtnText = btnLogin.textContent;
+
+            try {
+                btnLogin.textContent = '登入中...';
+                btnLogin.disabled = true;
+
+                // 呼叫登入 API
+                const result = await window.api.login(email, password);
+                
+                // 儲存登入狀態
+                localStorage.setItem('currentUser', JSON.stringify(result.user));
+                
+                // 導向首頁
+                window.location.href = 'index.html';
+                
+            } catch (err) {
+                console.error('Login API Error:', err);
+                loginError.textContent = err.message || '登入失敗，請檢查帳號密碼。';
+                passwordInput.classList.add('input-error');
+                emailInput.classList.add('input-error');
+            } finally {
+                btnLogin.textContent = originalBtnText;
+                btnLogin.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

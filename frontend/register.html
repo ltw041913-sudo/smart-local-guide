@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>註冊帳號 - 在地導覽平台</title>
+    <!-- 引入原本的主題變數與共用樣式 -->
+    <link rel="stylesheet" href="css/style.css"> 
+    <link rel="stylesheet" href="css/register.css">
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-card">
+            <div class="register-header">
+                <h2>✨ 建立新帳號</h2>
+                <p>加入我們，開始探索在地美好故事</p>
+            </div>
+            
+            <form class="register-form" onsubmit="event.preventDefault();">
+                <div class="form-group">
+                    <label for="email">電子郵件</label>
+                    <input type="email" id="email" placeholder="example@email.com" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">密碼</label>
+                    <input type="password" id="password" placeholder="至少 8 個字元" required>
+                    <div class="error-msg" id="password-error"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="confirm-password">確認密碼</label>
+                    <input type="password" id="confirm-password" placeholder="再次輸入密碼" required>
+                    <div class="error-msg" id="confirm-password-error"></div>
+                </div>
+                
+                <button type="submit" class="btn-register">立即註冊</button>
+            </form>
+            
+            <div class="register-footer">
+                <p>已經有帳號了嗎？ <a href="index.html">返回首頁登入</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.querySelector('.register-form');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirm-password');
+        const passwordError = document.getElementById('password-error');
+        const confirmPasswordError = document.getElementById('confirm-password-error');
+
+        form.addEventListener('submit', async function(event) {
+            event.preventDefault(); // 先阻止表單預設提交行為
+            
+            // 清除之前的錯誤訊息
+            passwordError.textContent = '';
+            confirmPasswordError.textContent = '';
+            passwordInput.classList.remove('input-error');
+            confirmPasswordInput.classList.remove('input-error');
+            
+            let isValid = true;
+
+            // 檢查密碼長度
+            if (passwordInput.value.length < 8) {
+                passwordError.textContent = '密碼必須至少 8 個字元';
+                passwordInput.classList.add('input-error');
+                isValid = false;
+            }
+
+            // 檢查密碼是否一致
+            if (passwordInput.value !== confirmPasswordInput.value) {
+                confirmPasswordError.textContent = '兩次輸入的密碼不相同';
+                confirmPasswordInput.classList.add('input-error');
+                isValid = false;
+            }
+
+            if (!isValid) {
+                return; // 若有錯誤，直接結束
+            } 
+
+            // 這裡加入呼叫後端 API 的程式碼
+            const email = document.getElementById('email').value;
+            const password = passwordInput.value;
+            const btn = document.querySelector('.btn-register');
+            const originalBtnText = btn.textContent;
+
+            try {
+                btn.textContent = '註冊中...';
+                btn.disabled = true;
+
+                // 使用在 api.js 中定義的 API_BASE，若無則預設
+                const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '' || window.location.protocol === 'file:') 
+                    ? 'http://localhost:3000/api' : '/api';
+                
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    alert('驗證成功！' + data.message + '\n即將為您導向登入頁面...');
+                    window.location.href = 'index.html'; // 註冊成功後導向首頁/登入頁
+                } else {
+                    // 若後端回傳錯誤（例如 Email 已存在）
+                    alert('註冊失敗: ' + (data.error || '未知錯誤'));
+                }
+            } catch (err) {
+                console.error('Registration API Error:', err);
+                alert('網路錯誤，請稍後再試。');
+            } finally {
+                btn.textContent = originalBtnText;
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
