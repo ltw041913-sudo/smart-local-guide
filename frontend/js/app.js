@@ -189,9 +189,20 @@ const app = {
             // Initialize panorama if URL exists
             if (merchant.panoramaUrl) {
                 setTimeout(() => {
+                    const getFullUrl = (url) => {
+                        if (!url) return '';
+                        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+                            return url;
+                        }
+                        const serverOrigin = (window.location.protocol === 'file:' || window.location.hostname === '')
+                            ? 'http://localhost:3000'
+                            : window.location.origin;
+                        return `${serverOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
+                    };
+
                     let config = {
                         "type": "equirectangular",
-                        "panorama": merchant.panoramaUrl,
+                        "panorama": getFullUrl(merchant.panoramaUrl),
                         "autoLoad": true,
                         "autoRotate": -2
                     };
@@ -203,7 +214,7 @@ const app = {
                             if (Array.isArray(paths) && paths.length === 6) {
                                 config = {
                                     "type": "cubemap",
-                                    "cubeMap": paths,
+                                    "cubeMap": paths.map(p => getFullUrl(p)),
                                     "autoLoad": true,
                                     "autoRotate": -2
                                 };
@@ -257,11 +268,35 @@ const app = {
     openAddModal() {
         document.getElementById('add-overlay').classList.add('active');
         document.getElementById('add-modal').classList.add('active');
+        // Reset panorama form
+        const radioSingle = document.querySelector('input[name="add-panorama-type"][value="single"]');
+        if (radioSingle) {
+            radioSingle.checked = true;
+            this.togglePanoramaInputType('add', 'single');
+        }
+        const fileSingle = document.getElementById('add-panorama-single');
+        if (fileSingle) fileSingle.value = '';
+        ['front', 'right', 'back', 'left', 'up', 'down'].forEach(face => {
+            const el = document.getElementById(`add-cubemap-${face}`);
+            if (el) el.value = '';
+        });
     },
 
     closeAddModal() {
         document.getElementById('add-overlay').classList.remove('active');
         document.getElementById('add-modal').classList.remove('active');
+    },
+
+    togglePanoramaInputType(mode, type) {
+        const singleWrapper = document.getElementById(`${mode}-panorama-single-wrapper`);
+        const cubemapWrapper = document.getElementById(`${mode}-cubemap-wrapper`);
+        if (type === 'single') {
+            if (singleWrapper) singleWrapper.style.display = 'block';
+            if (cubemapWrapper) cubemapWrapper.style.display = 'none';
+        } else {
+            if (singleWrapper) singleWrapper.style.display = 'none';
+            if (cubemapWrapper) cubemapWrapper.style.display = 'grid';
+        }
     },
 
     async submitNewMerchant() {
@@ -270,25 +305,32 @@ const app = {
         const address = document.getElementById('add-address').value;
         const hours = document.getElementById('add-hours').value;
         
-        const cubemapFiles = {
-            front: document.getElementById('add-cubemap-front').files[0],
-            right: document.getElementById('add-cubemap-right').files[0],
-            back: document.getElementById('add-cubemap-back').files[0],
-            left: document.getElementById('add-cubemap-left').files[0],
-            up: document.getElementById('add-cubemap-up').files[0],
-            down: document.getElementById('add-cubemap-down').files[0]
-        };
-
         if (!name || !category) return alert(window.i18n.t('alert_required_fields'));
 
         try {
             let panoramaUrl = '';
-            // Check if all 6 cubemap files are selected
-            const hasCubemap = Object.values(cubemapFiles).every(f => f);
-            
-            if (hasCubemap) {
-                const uploadRes = await api.uploadCubemap(cubemapFiles);
-                panoramaUrl = JSON.stringify(uploadRes.paths);
+            const type = document.querySelector('input[name="add-panorama-type"]:checked').value;
+
+            if (type === 'single') {
+                const singleFile = document.getElementById('add-panorama-single').files[0];
+                if (singleFile) {
+                    const uploadRes = await api.uploadImage(singleFile);
+                    panoramaUrl = uploadRes.filePath;
+                }
+            } else {
+                const cubemapFiles = {
+                    front: document.getElementById('add-cubemap-front').files[0],
+                    right: document.getElementById('add-cubemap-right').files[0],
+                    back: document.getElementById('add-cubemap-back').files[0],
+                    left: document.getElementById('add-cubemap-left').files[0],
+                    up: document.getElementById('add-cubemap-up').files[0],
+                    down: document.getElementById('add-cubemap-down').files[0]
+                };
+                const hasCubemap = Object.values(cubemapFiles).every(f => f);
+                if (hasCubemap) {
+                    const uploadRes = await api.uploadCubemap(cubemapFiles);
+                    panoramaUrl = JSON.stringify(uploadRes.paths);
+                }
             }
             
             await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, lat: 25.033, lng: 121.565, panoramaUrl });
@@ -305,11 +347,32 @@ const app = {
         document.getElementById('edit-hours').value = m.openingHours || '';
         document.getElementById('edit-announcement').value = m.announcement || '';
         document.getElementById('edit-description').value = m.description || '';
+        
         // Reset file inputs
+        const fileSingle = document.getElementById('edit-panorama-single');
+        if (fileSingle) fileSingle.value = '';
         ['front', 'right', 'back', 'left', 'up', 'down'].forEach(face => {
             const el = document.getElementById(`edit-cubemap-${face}`);
             if (el) el.value = '';
         });
+
+        // Determine correct type from merchant.panoramaUrl
+        let type = 'single';
+        if (m.panoramaUrl && m.panoramaUrl.startsWith('[')) {
+            try {
+                const paths = JSON.parse(m.panoramaUrl);
+                if (Array.isArray(paths) && paths.length === 6) {
+                    type = 'cubemap';
+                }
+            } catch(e) {}
+        }
+        
+        const radio = document.querySelector(`input[name="edit-panorama-type"][value="${type}"]`);
+        if (radio) {
+            radio.checked = true;
+            this.togglePanoramaInputType('edit', type);
+        }
+
         document.getElementById('edit-modal').dataset.merchantId = id;
         document.getElementById('edit-overlay').classList.add('active');
         document.getElementById('edit-modal').classList.add('active');
@@ -327,26 +390,34 @@ const app = {
         const hours = document.getElementById('edit-hours').value;
         const announcement = document.getElementById('edit-announcement').value;
         const description = document.getElementById('edit-description').value;
-        
-        const cubemapFiles = {
-            front: document.getElementById('edit-cubemap-front').files[0],
-            right: document.getElementById('edit-cubemap-right').files[0],
-            back: document.getElementById('edit-cubemap-back').files[0],
-            left: document.getElementById('edit-cubemap-left').files[0],
-            up: document.getElementById('edit-cubemap-up').files[0],
-            down: document.getElementById('edit-cubemap-down').files[0]
-        };
 
         try {
             let targetMerchant = this.merchants.find(m => m.id == id);
             let panoramaUrl = targetMerchant.panoramaUrl || '';
-            const hasCubemap = Object.values(cubemapFiles).every(f => f);
-            
-            if (hasCubemap) {
-                const uploadRes = await api.uploadCubemap(cubemapFiles);
-                panoramaUrl = JSON.stringify(uploadRes.paths);
+            const type = document.querySelector('input[name="edit-panorama-type"]:checked').value;
+
+            if (type === 'single') {
+                const singleFile = document.getElementById('edit-panorama-single').files[0];
+                if (singleFile) {
+                    const uploadRes = await api.uploadImage(singleFile);
+                    panoramaUrl = uploadRes.filePath;
+                }
+            } else {
+                const cubemapFiles = {
+                    front: document.getElementById('edit-cubemap-front').files[0],
+                    right: document.getElementById('edit-cubemap-right').files[0],
+                    back: document.getElementById('edit-cubemap-back').files[0],
+                    left: document.getElementById('edit-cubemap-left').files[0],
+                    up: document.getElementById('edit-cubemap-up').files[0],
+                    down: document.getElementById('edit-cubemap-down').files[0]
+                };
+                const hasCubemap = Object.values(cubemapFiles).every(f => f);
+                if (hasCubemap) {
+                    const uploadRes = await api.uploadCubemap(cubemapFiles);
+                    panoramaUrl = JSON.stringify(uploadRes.paths);
+                }
             }
-            
+
             // 使用原本店家的 ownerId，這樣即便 admin 去編輯也不會因為身分不符而 SQL 失敗
             await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: targetMerchant.ownerId, panoramaUrl });
             

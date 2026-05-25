@@ -90,9 +90,24 @@
             <p><span data-i18n="label_category">類別：</span><input type="text" id="add-category" class="search-box"></p>
             <p><span data-i18n="label_address">地址：</span><input type="text" id="add-address" class="search-box"></p>
             <p><label data-i18n="label_hours"></label><input type="text" id="add-hours" class="search-box" placeholder="e.g. 09:00 - 18:00"></p>
-            <div class="cubemap-inputs">
+            <div class="panorama-upload-container">
                 <p><label data-i18n="label_panorama"></label></p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
+                <div class="panorama-type-selector">
+                    <label>
+                        <input type="radio" name="add-panorama-type" value="single" checked onclick="app.togglePanoramaInputType('add', 'single')">
+                        <span data-i18n="panorama_type_single">單張全景照片</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="add-panorama-type" value="cubemap" onclick="app.togglePanoramaInputType('add', 'cubemap')">
+                        <span data-i18n="panorama_type_cubemap">立方體投影 (6面)</span>
+                    </label>
+                </div>
+                <!-- Single File Input -->
+                <div id="add-panorama-single-wrapper" style="margin-bottom: 1rem;">
+                    <input type="file" id="add-panorama-single" accept="image/*" class="search-box" style="padding: 0.5rem; margin-bottom: 0;">
+                </div>
+                <!-- Cubemap Inputs -->
+                <div id="add-cubemap-wrapper" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem; margin-bottom: 1rem;">
                     <div><label data-i18n="label_cubemap_front"></label><input type="file" id="add-cubemap-front" accept="image/*"></div>
                     <div><label data-i18n="label_cubemap_right"></label><input type="file" id="add-cubemap-right" accept="image/*"></div>
                     <div><label data-i18n="label_cubemap_back"></label><input type="file" id="add-cubemap-back" accept="image/*"></div>
@@ -112,9 +127,24 @@
             <p><span data-i18n="label_name">店名：</span><input type="text" id="edit-name" class="search-box"></p>
             <p><span data-i18n="label_address">地址：</span><input type="text" id="edit-address" class="search-box"></p>
             <p><label data-i18n="label_hours"></label><input type="text" id="edit-hours" class="search-box"></p>
-            <div class="cubemap-inputs">
+            <div class="panorama-upload-container">
                 <p><label data-i18n="label_panorama"></label></p>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem;">
+                <div class="panorama-type-selector">
+                    <label>
+                        <input type="radio" name="edit-panorama-type" value="single" checked onclick="app.togglePanoramaInputType('edit', 'single')">
+                        <span data-i18n="panorama_type_single">單張全景照片</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="edit-panorama-type" value="cubemap" onclick="app.togglePanoramaInputType('edit', 'cubemap')">
+                        <span data-i18n="panorama_type_cubemap">立方體投影 (6面)</span>
+                    </label>
+                </div>
+                <!-- Single File Input -->
+                <div id="edit-panorama-single-wrapper" style="margin-bottom: 1rem;">
+                    <input type="file" id="edit-panorama-single" accept="image/*" class="search-box" style="padding: 0.5rem; margin-bottom: 0;">
+                </div>
+                <!-- Cubemap Inputs -->
+                <div id="edit-cubemap-wrapper" style="display: none; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.8rem; margin-bottom: 1rem;">
                     <div><label data-i18n="label_cubemap_front"></label><input type="file" id="edit-cubemap-front" accept="image/*"></div>
                     <div><label data-i18n="label_cubemap_right"></label><input type="file" id="edit-cubemap-right" accept="image/*"></div>
                     <div><label data-i18n="label_cubemap_back"></label><input type="file" id="edit-cubemap-back" accept="image/*"></div>

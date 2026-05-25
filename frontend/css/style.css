@@ -735,3 +735,34 @@ nav {
         right: 15px;
     }
 }
+
+/* Premium Segmented Panorama Type Selector */
+.panorama-type-selector {
+    display: flex;
+    background: #f1f5f9;
+    padding: 4px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    border: 1px solid #e2e8f0;
+}
+.panorama-type-selector label {
+    flex: 1;
+    text-align: center;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    color: var(--text-muted);
+    margin-bottom: 0 !important;
+}
+.panorama-type-selector input[type="radio"] {
+    display: none;
+}
+.panorama-type-selector label:has(input:checked) {
+    background: white;
+    color: var(--forest-green);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
