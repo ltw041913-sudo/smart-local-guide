@@ -25,20 +25,24 @@ router.post('/plan-trip', async (req, res) => {
         你是一個頂尖的在地旅遊規劃師。請根據使用者的「旅遊興趣」與「手動選定的店家」，從我們平台提供的資料庫中，排出一份完美的行程表。
 
         【使用者條件】
-        - 旅遊時間：${duration} 天 (0.5代表半日遊)
+        - 預計遊玩時間：${duration}
         - **使用者手動選定的優先地點**：${selectedPlaces && selectedPlaces.length > 0 ? selectedPlaces.join(', ') : '無'}
         - 選擇的興趣標籤：${interests && interests.length > 0 ? interests.join(', ') : '無特定'}
         - 其他偏好：${preferences || '無特定偏好，請安排順暢舒適的節奏'}
 
         【平台店家與景點資料庫】
-        ${allPlaces.map(p => `- 名稱: ${p.name} | 類別: ${p.category} | 標籤: ${p.tags} | 座標: ${p.lat},${p.lng} | 營業時間: ${p.openingHours || '未註明'}`).join('\n')}
+        ${allPlaces.map(p => `- 名稱: ${p.name} | 類別: ${p.category} | 地址: ${p.address || '未註明'} | 標籤: ${p.tags} | 座標: ${p.lat},${p.lng} | 營業時間: ${p.openingHours || '未註明'}`).join('\n')}
 
         【任務要求】
         1. **優先順序**：請務必將「使用者手動選定的優先地點」排入行程。
-        2. **考量細節**：請根據「營業時間」與「座標位置」安排合理的順序。如果地點之間很近，請標註「步行即可抵達」。
+        2. **考量細節**：請根據「營業時間」與「地址/座標位置」安排合理的順序。如果地點之間很近，請標註「步行即可抵達」。
         3. **行程排版**：請給我一個排版精美的 Markdown 格式行程表。
-        4. **Google Maps 導航連結**：請在行程表的最下方，產生一條 Google Maps 路線規劃連結。
-           連結格式範例： \`[📍 點擊這裡開啟 Google Maps 自動導航](https://www.google.com/maps/dir/?api=1&origin=地點A的座標&destination=地點C的座標&waypoints=地點B的座標)\`
+        4. **Google Maps 導航連結**：請在行程表的最下方，產生一條 Google Maps 路線規劃連結，讓使用者可以從「目前位置」導航到行程第一站，再經過中途站到最後一站。
+           - origin 請固定設為 My+Location（讓 Google Maps 自動抓使用者的 GPS 位置）
+           - destination 設為行程最後一站的「地址」
+           - waypoints 設為中間各站的「地址」，以 | 分隔
+           - 連結格式範例：\`[📍 點擊這裡開啟 Google Maps 自動導航](https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=最後一站地址&waypoints=第一站地址|第二站地址)\`
+           - 請只附一條連結，不要有多條連結。
 
         IMPORTANT INSTRUCTION: You MUST reply entirely in ${outputLang}. Ensure the tone is helpful and inspiring.
         `;

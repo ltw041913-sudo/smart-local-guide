@@ -128,6 +128,17 @@ const api = {
         });
         if (!res.ok) throw new Error('Cubemap upload failed');
         return res.json(); // { paths: [...] }
+    },
+
+    async upgradeToOwner(userId) {
+        const res = await fetch(`${API_BASE}/auth/upgrade-role`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userId, role: 'owner' })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Role upgrade failed');
+        return data;
     }
 };
 

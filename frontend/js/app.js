@@ -1,7 +1,30 @@
+const getFullUrl = (url) => {
+    if (!url) return '';
+    if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+        return url;
+    }
+    const serverOrigin = (window.location.protocol === 'file:' || window.location.hostname === '')
+        ? 'http://localhost:3000'
+        : window.location.origin;
+    return `${serverOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
+};
+
+const CATEGORY_MAP = {
+    'sightseeing': { label: '景點', icon: '🏛️' },
+    'restaurant':  { label: '餐廳', icon: '🍽️' },
+    'store':       { label: '商店', icon: '🛍️' },
+    'cafe':        { label: '咖啡廳', icon: '☕' },
+    'hotel':       { label: '住宿', icon: '🏨' },
+    'activity':    { label: '體驗活動', icon: '🎭' },
+    'nature':      { label: '自然景觀', icon: '🌿' },
+    'culture':     { label: '文化歷史', icon: '🏯' },
+};
+
 const app = {
     currentUser: null,
     merchants: [],
     selectedMerchants: [],
+    activeCategory: 'all',
     planningMode: false,
     heroIndex: 0,
     heroInterval: null,
@@ -59,7 +82,8 @@ const app = {
             }
 
             const btnAdd = document.getElementById('btn-add-merchant');
-            if (this.currentUser && (this.currentUser.role === 'owner' || this.currentUser.role === 'admin')) {
+            // Show "Register Store" button for any logged-in user (consumer, owner, admin)
+            if (this.currentUser && this.currentUser.role !== 'unregistered') {
                 if(btnAdd) btnAdd.style.display = 'block';
             } else {
                 if(btnAdd) btnAdd.style.display = 'none';
@@ -81,32 +105,93 @@ const app = {
         }
     },
 
+    setCategoryFilter(cat) {
+        this.activeCategory = cat;
+        this.renderMerchants(document.getElementById('search-input').value);
+    },
+
+    getCategoryInfo(rawCat) {
+        const key = (rawCat || '').toLowerCase().trim();
+        return CATEGORY_MAP[key] || { label: rawCat || '其他', icon: '📍' };
+    },
+
     renderMerchants(filterText = '') {
         const list = document.getElementById('merchant-list');
         list.innerHTML = '';
 
-        const filtered = this.merchants.filter(m => 
-            m.name.toLowerCase().includes(filterText.toLowerCase()) || 
+        // 1. Text filter
+        let filtered = this.merchants.filter(m =>
+            m.name.toLowerCase().includes(filterText.toLowerCase()) ||
             (m.tags && m.tags.toLowerCase().includes(filterText.toLowerCase()))
         );
 
+        // 2. Category filter
+        if (this.activeCategory !== 'all') {
+            filtered = filtered.filter(m =>
+                (m.category || '').toLowerCase().trim() === this.activeCategory
+            );
+        }
+
+        // 3. Render dynamic category chips
+        const filterBar = document.getElementById('category-filters');
+        if (filterBar) {
+            const allCategories = [...new Set(this.merchants.map(m => (m.category || '').toLowerCase().trim()))].filter(Boolean);
+            const chips = ['all', ...allCategories].map(cat => {
+                const info = cat === 'all' ? { label: '全部', icon: '🗺️' } : this.getCategoryInfo(cat);
+                const isActive = this.activeCategory === cat;
+                return `<button class="category-chip ${isActive ? 'active' : ''}" onclick="app.setCategoryFilter('${cat}')">${info.icon} ${info.label}</button>`;
+            }).join('');
+            filterBar.innerHTML = chips;
+        }
+
+        // 4. Group by category
+        const groups = {};
         filtered.forEach(m => {
-            const li = document.createElement('li');
-            li.className = 'merchant-item';
-            li.style.display = 'flex';
-            li.style.alignItems = 'center';
-            li.style.gap = '10px';
-            const isSelected = this.selectedMerchants.includes(m.id);
-            li.innerHTML = `
-                ${this.planningMode ? `<input type="checkbox" ${isSelected ? 'checked' : ''} onclick="app.toggleTripSelection(event, ${m.id})" style="width:18px; height:18px; cursor:pointer; flex-shrink:0;">` : ''}
-                <div style="flex:1;" onclick="app.showDetail(${m.id})">
-                    <h3 style="margin:0; font-size:1.1rem;">${m.name}</h3>
-                    <small style="color:#666;">${m.category}</small>
-                </div>
-                <div class="rating">⭐ ${m.rating || '5.0'}</div>
-            `;
-            list.appendChild(li);
+            const key = (m.category || '其他').toLowerCase().trim();
+            if (!groups[key]) groups[key] = [];
+            groups[key].push(m);
         });
+
+        const groupKeys = Object.keys(groups);
+        const showHeaders = this.activeCategory === 'all' && groupKeys.length > 1;
+
+        if (filtered.length === 0) {
+            const empty = document.createElement('li');
+            empty.style.cssText = 'text-align:center; padding: 2rem 1rem; color: var(--text-muted); font-size:0.9rem;';
+            empty.innerHTML = '😔 沒有符合條件的店家';
+            list.appendChild(empty);
+        } else {
+            groupKeys.forEach(groupKey => {
+                // Category header (only when showing all)
+                if (showHeaders) {
+                    const info = this.getCategoryInfo(groupKey);
+                    const header = document.createElement('li');
+                    header.className = 'category-group-header';
+                    header.innerHTML = `<span class="category-icon">${info.icon}</span><span>${info.label}</span><span class="category-count">${groups[groupKey].length}</span>`;
+                    list.appendChild(header);
+                }
+
+                // Merchant items in group
+                groups[groupKey].forEach(m => {
+                    const li = document.createElement('li');
+                    li.className = 'merchant-item';
+                    li.style.display = 'flex';
+                    li.style.alignItems = 'center';
+                    li.style.gap = '10px';
+                    const isSelected = this.selectedMerchants.includes(m.id);
+                    const catInfo = this.getCategoryInfo(m.category);
+                    li.innerHTML = `
+                        ${this.planningMode ? `<input type="checkbox" ${isSelected ? 'checked' : ''} onclick="app.toggleTripSelection(event, ${m.id})" style="width:18px; height:18px; cursor:pointer; flex-shrink:0;">` : ''}
+                        <div style="flex:1; cursor:pointer;" onclick="app.showDetail(${m.id})">
+                            <h3 style="margin:0; font-size:1rem; font-weight:700; color:var(--text-dark);">${m.name}</h3>
+                            <small style="color:var(--text-muted); font-size:0.78rem;">${catInfo.icon} ${catInfo.label}</small>
+                        </div>
+                        <div class="rating">⭐ ${m.rating || '5.0'}</div>
+                    `;
+                    list.appendChild(li);
+                });
+            });
+        }
 
         // Trip bar visibility
         const tripBar = document.getElementById('trip-selection-bar');
@@ -129,24 +214,18 @@ const app = {
 
             const t = (key) => window.i18n.t(key);
             content.innerHTML = `
-                <div class="detail-header" style="background-image: url('${merchant.imageUrl}')">
+                <div class="detail-header" style="background-image: url('${getFullUrl(merchant.imageUrl)}')">
                     <h1 class="detail-title">${merchant.name}</h1>
                 </div>
-                
-                <div class="announcement-box">
-                    <h3>${t('announcement_title')}</h3>
-                    <p>${merchant.announcement || t('announcement_default')}</p>
-                </div>
-
-                <div class="grid-layout">
+                <div class="grid-layout detail-grid-layout">
                     <div class="main-content">
-                        ${merchant.panoramaUrl ? `
-                        <div class="panorama-section" style="margin-bottom: 2rem;">
-                            <h3 style="margin-bottom: 1rem; color: var(--forest-green); display: flex; align-items: center; gap: 0.5rem;">🌐 360° 全景導覽</h3>
-                            <div id="panorama-viewer" style="width: 100%; height: 350px; background: #000; border-radius: 12px; overflow: hidden;"></div>
+                        ${merchant.announcement ? `
+                        <div class="announcement-box" style="margin-bottom: 2rem;">
+                            <h3>${t('announcement_title')}</h3>
+                            <p>${merchant.announcement}</p>
                         </div>
                         ` : ''}
-                        
+
                         <div id="audio-guide-section" style="margin-bottom: 2rem; padding: 1.5rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
                             <h3 style="margin-bottom: 1rem; color: var(--forest-green); display: flex; align-items: center; gap: 0.5rem;">${t('audio_title')}</h3>
                             <div style="display: flex; gap: 0.8rem; flex-wrap: wrap;" id="audio-controls">
@@ -164,6 +243,13 @@ const app = {
                                 ${typeof marked !== 'undefined' ? marked.parse(merchant.description || '') : (merchant.description || '')}
                             </div>
                         </div>
+
+                        ${merchant.panoramaUrl ? `
+                        <div class="panorama-section" style="margin-bottom: 2rem;">
+                            <h3 style="margin-bottom: 1rem; color: var(--forest-green); display: flex; align-items: center; gap: 0.5rem;">🌐 360° 全景導覽</h3>
+                            <div id="panorama-viewer" style="width: 100%; height: 350px; background: #000; border-radius: 12px; overflow: hidden;"></div>
+                        </div>
+                        ` : ''}
                     </div>
 
                     <div class="sidebar">
@@ -173,13 +259,13 @@ const app = {
                             <p><strong>${t('info_hours')}:</strong> ${merchant.openingHours || t('info_not_provided')}</p>
                             <p><strong>${t('info_category')}:</strong> ${merchant.category}</p>
                             <div style="margin-top:1rem; height:200px; background:#eee; border-radius:8px; overflow:hidden;">
-                                <iframe width="100%" height="100%" frameborder="0" src="https://www.google.com/maps?q=${merchant.lat},${merchant.lng}&hl=zh-TW&z=15&output=embed"></iframe>
+                                <iframe width="100%" height="100%" frameborder="0" src="https://www.google.com/maps?q=${merchant.lat},${merchant.lng}(${encodeURIComponent(merchant.name)})&hl=zh-TW&z=15&output=embed"></iframe>
                             </div>
                         </div>
                         ${isOwner ? `
                             <div style="display:flex; gap:10px; margin-top: 2rem;">
-                                <button class="btn btn-edit" onclick="app.openEditModal(${merchant.id})" style="flex:1; margin-top:0;">${t('btn_edit_merchant')}</button>
-                                <button class="btn" onclick="app.deleteMerchant(${merchant.id})" style="flex:1; background: var(--retro-red); color: white; justify-content: center;">刪除店家</button>
+                                <button class="btn btn-primary" onclick="app.openEditModal(${merchant.id})" style="flex:1; margin-top:0;">⚙️ ${t('btn_edit_merchant')}</button>
+                                <button class="btn btn-delete-outline" onclick="app.deleteMerchant(${merchant.id})" style="flex:1; margin-top:0;">🗑️ 刪除店家</button>
                             </div>
                         ` : ''}
                     </div>
@@ -189,17 +275,6 @@ const app = {
             // Initialize panorama if URL exists
             if (merchant.panoramaUrl) {
                 setTimeout(() => {
-                    const getFullUrl = (url) => {
-                        if (!url) return '';
-                        if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-                            return url;
-                        }
-                        const serverOrigin = (window.location.protocol === 'file:' || window.location.hostname === '')
-                            ? 'http://localhost:3000'
-                            : window.location.origin;
-                        return `${serverOrigin}${url.startsWith('/') ? '' : '/'}${url}`;
-                    };
-
                     let config = {
                         "type": "equirectangular",
                         "panorama": getFullUrl(merchant.panoramaUrl),
@@ -250,7 +325,7 @@ const app = {
         };
 
         const track = document.getElementById('hero-track');
-        track.innerHTML = activeMerchants.map(m => `<div class="hero-slide" style="background-image: url('${m.imageUrl}')"></div>`).join('');
+        track.innerHTML = activeMerchants.map(m => `<div class="hero-slide" style="background-image: url('${getFullUrl(m.imageUrl)}')"></div>`).join('');
         
         updateHero(0);
         if(this.heroInterval) clearInterval(this.heroInterval);
@@ -266,6 +341,13 @@ const app = {
     },
 
     openAddModal() {
+        // Guard: must be logged in
+        if (!this.currentUser || this.currentUser.role === 'unregistered') {
+            if (confirm('您需要登入才能註冊店家。\n是否前往登入頁面？')) {
+                window.location.href = 'login.html';
+            }
+            return;
+        }
         document.getElementById('add-overlay').classList.add('active');
         document.getElementById('add-modal').classList.add('active');
         // Reset panorama form
@@ -276,6 +358,8 @@ const app = {
         }
         const fileSingle = document.getElementById('add-panorama-single');
         if (fileSingle) fileSingle.value = '';
+        const fileImage = document.getElementById('add-image');
+        if (fileImage) fileImage.value = '';
         ['front', 'right', 'back', 'left', 'up', 'down'].forEach(face => {
             const el = document.getElementById(`add-cubemap-${face}`);
             if (el) el.value = '';
@@ -332,50 +416,80 @@ const app = {
                     panoramaUrl = JSON.stringify(uploadRes.paths);
                 }
             }
+            let imageUrl = '';
+            const imageFile = document.getElementById('add-image').files[0];
+            if (imageFile) {
+                const uploadRes = await api.uploadImage(imageFile);
+                imageUrl = uploadRes.filePath;
+            }
             
-            await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, lat: 25.033, lng: 121.565, panoramaUrl });
+            await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, panoramaUrl, imageUrl });
+            
+            // Auto-upgrade role to 'owner' after registering first store
+            if (this.currentUser.role !== 'admin' && this.currentUser.role !== 'owner') {
+                try {
+                    await api.upgradeToOwner(this.currentUser.id);
+                    this.currentUser.role = 'owner';
+                    localStorage.setItem('currentUser', JSON.stringify(this.currentUser));
+                } catch (upgradeErr) {
+                    console.warn('Role upgrade failed (non-critical):', upgradeErr.message);
+                }
+            }
+            
             this.closeAddModal();
             await this.loadMerchants();
             this.renderMerchants();
+            alert('🎉 店家註冊成功！您現在可以編輯和管理您的店家了。');
         } catch (e) { alert(e.message); }
     },
 
     openEditModal(id) {
-        const m = this.merchants.find(merchant => merchant.id === id);
-        document.getElementById('edit-name').value = m.name || '';
-        document.getElementById('edit-address').value = m.address || '';
-        document.getElementById('edit-hours').value = m.openingHours || '';
-        document.getElementById('edit-announcement').value = m.announcement || '';
-        document.getElementById('edit-description').value = m.description || '';
-        
-        // Reset file inputs
-        const fileSingle = document.getElementById('edit-panorama-single');
-        if (fileSingle) fileSingle.value = '';
-        ['front', 'right', 'back', 'left', 'up', 'down'].forEach(face => {
-            const el = document.getElementById(`edit-cubemap-${face}`);
-            if (el) el.value = '';
-        });
+        try {
+            const m = this.merchants.find(merchant => merchant.id == id);
+            if (!m) {
+                alert("找不到該店家資料！");
+                return;
+            }
+            document.getElementById('edit-name').value = m.name || '';
+            document.getElementById('edit-address').value = m.address || '';
+            document.getElementById('edit-hours').value = m.openingHours || '';
+            document.getElementById('edit-announcement').value = m.announcement || '';
+            document.getElementById('edit-description').value = m.description || '';
+            
+            // Reset file inputs
+            const fileSingle = document.getElementById('edit-panorama-single');
+            if (fileSingle) fileSingle.value = '';
+            const fileImage = document.getElementById('edit-image');
+            if (fileImage) fileImage.value = '';
+            ['front', 'right', 'back', 'left', 'up', 'down'].forEach(face => {
+                const el = document.getElementById(`edit-cubemap-${face}`);
+                if (el) el.value = '';
+            });
 
-        // Determine correct type from merchant.panoramaUrl
-        let type = 'single';
-        if (m.panoramaUrl && m.panoramaUrl.startsWith('[')) {
-            try {
-                const paths = JSON.parse(m.panoramaUrl);
-                if (Array.isArray(paths) && paths.length === 6) {
-                    type = 'cubemap';
-                }
-            } catch(e) {}
-        }
-        
-        const radio = document.querySelector(`input[name="edit-panorama-type"][value="${type}"]`);
-        if (radio) {
-            radio.checked = true;
-            this.togglePanoramaInputType('edit', type);
-        }
+            // Determine correct type from merchant.panoramaUrl
+            let type = 'single';
+            if (m.panoramaUrl && typeof m.panoramaUrl === 'string' && m.panoramaUrl.startsWith('[')) {
+                try {
+                    const paths = JSON.parse(m.panoramaUrl);
+                    if (Array.isArray(paths) && paths.length === 6) {
+                        type = 'cubemap';
+                    }
+                } catch(e) {}
+            }
+            
+            const radio = document.querySelector(`input[name="edit-panorama-type"][value="${type}"]`);
+            if (radio) {
+                radio.checked = true;
+                app.togglePanoramaInputType('edit', type);
+            }
 
-        document.getElementById('edit-modal').dataset.merchantId = id;
-        document.getElementById('edit-overlay').classList.add('active');
-        document.getElementById('edit-modal').classList.add('active');
+            document.getElementById('edit-modal').dataset.merchantId = id;
+            document.getElementById('edit-overlay').classList.add('active');
+            document.getElementById('edit-modal').classList.add('active');
+        } catch (err) {
+            console.error("openEditModal error:", err);
+            alert("開啟編輯視窗時發生錯誤: " + err.message);
+        }
     },
 
     closeEditModal() {
@@ -418,8 +532,15 @@ const app = {
                 }
             }
 
+            let imageUrl = targetMerchant.imageUrl || '';
+            const imageFile = document.getElementById('edit-image').files[0];
+            if (imageFile) {
+                const uploadRes = await api.uploadImage(imageFile);
+                imageUrl = uploadRes.filePath;
+            }
+
             // 使用原本店家的 ownerId，這樣即便 admin 去編輯也不會因為身分不符而 SQL 失敗
-            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: targetMerchant.ownerId, panoramaUrl });
+            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: targetMerchant.ownerId, panoramaUrl, imageUrl });
             
             // 1. Reload global data to sync list and hero
             await this.loadMerchants();
@@ -480,7 +601,8 @@ const app = {
         if (this.selectedMerchants.length < 2) {
             return alert(window.i18n.t('alert_min_2'));
         }
-        const selectedData = this.merchants.filter(m => this.selectedMerchants.includes(m.id));
+        // Preserve selection order instead of DB array order
+        const selectedData = this.selectedMerchants.map(id => this.merchants.find(m => m.id == id)).filter(Boolean);
         const selectedNames = selectedData.map(m => m.name);
 
         document.getElementById('trip-overlay').classList.add('active');
@@ -488,8 +610,41 @@ const app = {
         document.getElementById('trip-result').innerHTML = `<i>${window.i18n.t('trip_loading')}</i>`;
 
         try {
-            const itinerary = await api.planTrip(this.merchants, 1, '', [], window.i18n ? window.i18n.currentLang : 'zh-TW', selectedNames);
-            document.getElementById('trip-result').innerHTML = typeof marked !== 'undefined' ? marked.parse(itinerary) : itinerary;
+            const startTimeInput = document.getElementById('trip-start-time');
+            const endTimeInput = document.getElementById('trip-end-time');
+            const startTime = startTimeInput ? startTimeInput.value : '09:00';
+            const endTime = endTimeInput ? endTimeInput.value : '18:00';
+            const durationString = `${startTime} ~ ${endTime}`;
+            
+            const itinerary = await api.planTrip(selectedData, durationString, '', [], window.i18n ? window.i18n.currentLang : 'zh-TW', selectedNames);
+
+            // Build a 100% reliable Google Maps URL using strictly the physical address (or coordinates as fallback)
+            // as requested by the user, avoiding any coordinate reverse-geocoding issues
+            const destination = selectedData[selectedData.length - 1];
+            const midpoints = selectedData.slice(0, -1);
+            
+            const destStr = destination.address ? destination.address.trim() : `${destination.lat},${destination.lng}`;
+            const waypointsList = midpoints.map(p => p.address ? p.address.trim() : `${p.lat},${p.lng}`);
+            const waypointsStr = waypointsList.join('|');
+            
+            const correctMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${encodeURIComponent(destStr)}${waypointsStr ? '&waypoints=' + encodeURIComponent(waypointsStr) : ''}&travelmode=driving`;
+
+            // Replace ANY google.com/maps/dir link the AI produced with the correct one
+            const fixedItinerary = itinerary.replace(
+                /https?:\/\/www\.google\.com\/maps\/dir\/[^\s)\]"]*/g,
+                correctMapsUrl
+            );
+
+            document.getElementById('trip-result').innerHTML = typeof marked !== 'undefined' ? marked.parse(fixedItinerary) : fixedItinerary;
+
+            // After rendering, ensure all Maps links open in new tab and use correct URL
+            setTimeout(() => {
+                document.querySelectorAll('#trip-result a[href*="google.com/maps"]').forEach(a => {
+                    a.href = correctMapsUrl;
+                    a.target = '_blank';
+                    a.rel = 'noopener noreferrer';
+                });
+            }, 100);
         } catch (e) {
             console.error('Trip Error:', e);
             document.getElementById('trip-result').innerHTML = `<p style="color:red;">${e.message}</p>`;

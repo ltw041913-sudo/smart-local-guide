@@ -52,19 +52,32 @@
                     <div style="position: sticky; top: 120px;">
                         <input type="text" id="search-input" class="search-box" data-i18n-placeholder="search_placeholder" placeholder="搜尋店名、類別或標籤..." onkeyup="app.filterMerchants()">
 
+                        <!-- Category Filter Chips -->
+                        <div id="category-filters" class="category-filters"></div>
+
                         <!-- AI Trip Planner Button -->
                         <button class="btn btn-primary" onclick="app.togglePlanningMode()" id="btn-trip-planner" data-i18n="btn_trip_planner" style="width: 100%; margin-bottom: 1rem; background: var(--forest-green); justify-content: center;">🤖 開始 AI 智慧規劃行程</button>
 
                         <button class="btn btn-primary" id="btn-add-merchant" data-i18n="btn_add_merchant" style="display:none; width:100%; margin-bottom:1.5rem; justify-content: center;" onclick="app.openAddModal()">✨ 註冊新店家</button>
 
                         <!-- Trip Selection Bar -->
-                        <div id="trip-selection-bar" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: #fff; border: 2px dashed #c0392b; border-radius: 12px; text-align: center;">
-                            <p style="font-size: 0.8rem; color: #c0392b; margin-bottom: 0.8rem; font-weight: bold;">
+                        <div id="trip-selection-bar" class="trip-selection-bar" style="display: none;">
+                            <p style="margin-bottom: 1rem;">
                                 <span data-i18n="trip_selected_count">已選定</span>
                                 <span id="selected-count">0</span>
                                 <span data-i18n="trip_selected_unit">個地點</span>
                             </p>
-                            <button class="btn btn-primary" onclick="app.generateTrip()" data-i18n="btn_generate_trip" style="width: 100%; background: #c0392b; font-size: 0.9rem;">✨ 生成深度旅遊路線</button>
+                            <div style="margin-bottom: 1rem; text-align: left; display: flex; gap: 10px; align-items: center;">
+                                <div style="flex: 1;">
+                                    <label for="trip-start-time" style="font-size: 0.85rem; color: var(--text-dark); font-weight: 700; display: block; margin-bottom: 0.4rem;" data-i18n="trip_start_time">開始時間：</label>
+                                    <input type="time" id="trip-start-time" style="width: 100%; box-sizing: border-box;" value="09:00">
+                                </div>
+                                <div style="flex: 1;">
+                                    <label for="trip-end-time" style="font-size: 0.85rem; color: var(--text-dark); font-weight: 700; display: block; margin-bottom: 0.4rem;" data-i18n="trip_end_time">結束時間：</label>
+                                    <input type="time" id="trip-end-time" style="width: 100%; box-sizing: border-box;" value="18:00">
+                                </div>
+                            </div>
+                            <button class="btn btn-primary" onclick="app.generateTrip()" data-i18n="btn_generate_trip" style="width: 100%; font-size: 0.95rem;">✨ 生成深度旅遊路線</button>
                         </div>
 
                         <ul class="merchant-list" id="merchant-list"></ul>
@@ -78,8 +91,8 @@
     </div>
 
     <div id="view-detail" class="view">
-        <button class="btn btn-primary" onclick="app.showHome()" data-i18n="btn_back" style="background: white; color: var(--forest-green); border: 1px solid #e2e8f0; box-shadow: var(--shadow-sm);">← 返回列表</button>
-        <div id="detail-content" style="margin-top: 2rem;"></div>
+        <button class="btn btn-back" onclick="app.showHome()" data-i18n="btn_back">← 返回列表</button>
+        <div id="detail-content"></div>
     </div>
 
     <div class="modal-overlay" id="add-overlay" onclick="app.closeAddModal()"></div>
@@ -90,6 +103,7 @@
             <p><span data-i18n="label_category">類別：</span><input type="text" id="add-category" class="search-box"></p>
             <p><span data-i18n="label_address">地址：</span><input type="text" id="add-address" class="search-box"></p>
             <p><label data-i18n="label_hours"></label><input type="text" id="add-hours" class="search-box" placeholder="e.g. 09:00 - 18:00"></p>
+            <p><span data-i18n="label_image">封面照片：</span><input type="file" id="add-image" accept="image/*" class="search-box" style="padding: 0.5rem;"></p>
             <div class="panorama-upload-container">
                 <p><label data-i18n="label_panorama"></label></p>
                 <div class="panorama-type-selector">
@@ -127,6 +141,7 @@
             <p><span data-i18n="label_name">店名：</span><input type="text" id="edit-name" class="search-box"></p>
             <p><span data-i18n="label_address">地址：</span><input type="text" id="edit-address" class="search-box"></p>
             <p><label data-i18n="label_hours"></label><input type="text" id="edit-hours" class="search-box"></p>
+            <p><span data-i18n="label_image">封面照片：</span><input type="file" id="edit-image" accept="image/*" class="search-box" style="padding: 0.5rem;"></p>
             <div class="panorama-upload-container">
                 <p><label data-i18n="label_panorama"></label></p>
                 <div class="panorama-type-selector">

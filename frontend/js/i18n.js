@@ -13,6 +13,8 @@ const translations = {
         // Trip selection bar
         trip_selected_count: '已選定',
         trip_selected_unit: '個地點',
+        trip_start_time: '開始時間：',
+        trip_end_time: '結束時間：',
         btn_generate_trip: '✨ 生成深度旅遊路線',
         // Map
         map_title: '📍 探索導覽地圖',
@@ -39,6 +41,7 @@ const translations = {
         label_category: '類別：',
         label_address: '地址：',
         label_hours: '營業：',
+        label_image: '封面照片：',
         label_panorama: '上傳 360 全景照片：',
         panorama_type_single: '單張全景照片',
         panorama_type_cubemap: '立方體投影 (6面)',
@@ -96,6 +99,8 @@ const translations = {
         // Trip selection bar
         trip_selected_count: 'Selected',
         trip_selected_unit: 'places',
+        trip_start_time: 'Start Time:',
+        trip_end_time: 'End Time:',
         btn_generate_trip: '✨ Generate Deep Travel Route',
         // Map
         map_title: '📍 Explore Map',
@@ -122,6 +127,7 @@ const translations = {
         label_category: 'Category:',
         label_address: 'Address:',
         label_hours: 'Hours:',
+        label_image: 'Cover Photo:',
         label_panorama: 'Upload 360 Panorama Photo:',
         panorama_type_single: 'Single Panorama',
         panorama_type_cubemap: 'Cubemap (6 faces)',
@@ -179,6 +185,8 @@ const translations = {
         // Trip selection bar
         trip_selected_count: '選択済み',
         trip_selected_unit: 'か所',
+        trip_start_time: '開始時間：',
+        trip_end_time: '終了時間：',
         btn_generate_trip: '✨ 深度旅行ルートを生成',
         // Map
         map_title: '📍 探索マップ',
@@ -205,6 +213,7 @@ const translations = {
         label_category: 'カテゴリ：',
         label_address: '住所：',
         label_hours: '営業時間：',
+        label_image: 'カバー写真：',
         label_panorama: '360全景写真をアップロード：',
         panorama_type_single: '単一全景写真',
         panorama_type_cubemap: 'キューブマップ (6面)',

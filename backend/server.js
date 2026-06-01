@@ -88,14 +88,96 @@ app.get('/api/merchants/:id', async (req, res) => {
     }
 });
 
+// Geocoding helper function
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+async function geocodeAddress(address) {
+    if (!address || address.trim() === '' || address === '山林秘徑深處') {
+        return { lat: 25.033, lng: 121.565 };
+    }
+    
+    // 1. Try OSM Nominatim Geocoding first
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+        const res = await fetch(url, {
+            headers: {
+                'User-Agent': 'SmartLocalGuidePlatform/1.0 (contact: info@smartlocalguide.example)'
+            }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            if (data && data.length > 0) {
+                const lat = parseFloat(data[0].lat);
+                const lng = parseFloat(data[0].lon);
+                if (!isNaN(lat) && !isNaN(lng)) {
+                    console.log(`[OSM Geocoder] Success for "${address}":`, lat, lng);
+                    return { lat, lng };
+                }
+            }
+        }
+    } catch (e) {
+        console.error("[OSM Geocoder] Error:", e.message);
+    }
+
+    // 2. Fallback to Gemini if OSM fails/rate-limits
+    if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== 'YOUR_GEMINI_API_KEY_HERE') {
+        try {
+            console.log(`[Gemini Geocoder] Resolving coordinates for "${address}"...`);
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+            const prompt = `
+            Please find the GPS latitude and longitude coordinates for this address or location in Taiwan: "${address}".
+            If it is a famous scenic spot, restaurant or location, return its exact coordinates.
+            Return the output in STRICT and valid JSON format as follows:
+            {
+                "lat": 23.9575,
+                "lng": 120.6864
+            }
+            Do not wrap the response in markdown blocks (such as \`\`\`json) and do not provide any extra text. Just return the raw JSON object.
+            `;
+            const result = await model.generateContent(prompt);
+            const text = (await result.response).text().trim();
+            const cleanText = text.replace(/```json/i, '').replace(/```/g, '').trim();
+            const coords = JSON.parse(cleanText);
+            if (coords && !isNaN(coords.lat) && !isNaN(coords.lng)) {
+                console.log(`[Gemini Geocoder] Success for "${address}":`, coords.lat, coords.lng);
+                return { lat: parseFloat(coords.lat), lng: parseFloat(coords.lng) };
+            }
+        } catch (e) {
+            console.error("[Gemini Geocoder] Error:", e.message);
+        }
+    }
+
+    // 3. Fallback coordinates (Taipei default)
+    console.log(`[Geocoder] Fallback to default Taipei coordinates for "${address}"`);
+    return { lat: 25.033, lng: 121.565 };
+}
+
 // Create merchant
 app.post('/api/merchants', async (req, res) => {
-    const { name, category, lat, lng, address, openingHours, ownerId, panoramaUrl } = req.body;
+    const { name, category, address, openingHours, ownerId, panoramaUrl, imageUrl } = req.body;
+    let { lat, lng } = req.body;
+
+    // Automatically geocode coordinates from address if not manually specified or if default
+    if (address && (!lat || !lng || (lat === 25.033 && lng === 121.565))) {
+        try {
+            const coords = await geocodeAddress(address);
+            lat = coords.lat;
+            lng = coords.lng;
+        } catch (e) {
+            console.error("Auto geocoding failed during creation:", e);
+        }
+    }
+
+    if (!lat || !lng) {
+        lat = 25.033;
+        lng = 121.565;
+    }
+
     try {
         const { rows } = await db.query(
-            `INSERT INTO merchants (name, category, lat, lng, address, "openingHours", "ownerId", rating, announcement, description, "panoramaUrl")
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 5.0, '', '', $8) RETURNING id`,
-            [name, category, lat, lng, address, openingHours, ownerId, panoramaUrl]
+            `INSERT INTO merchants (name, category, lat, lng, address, "openingHours", "ownerId", rating, announcement, description, "panoramaUrl", "imageUrl")
+             VALUES ($1, $2, $3, $4, $5, $6, $7, 5.0, '', '', $8, $9) RETURNING id`,
+            [name, category, lat, lng, address, openingHours, ownerId, panoramaUrl, imageUrl || '']
         );
         res.json({ id: rows[0].id });
     } catch (err) {
@@ -105,12 +187,32 @@ app.post('/api/merchants', async (req, res) => {
 
 // Update merchant
 app.put('/api/merchants/:id', async (req, res) => {
-    const { name, announcement, description, address, openingHours, ownerId, panoramaUrl } = req.body;
+    const { name, announcement, description, address, openingHours, ownerId, panoramaUrl, imageUrl } = req.body;
+    let { lat, lng } = req.body;
+
+    // Automatically update coordinates by geocoding address if address is provided
+    if (address) {
+        try {
+            const coords = await geocodeAddress(address);
+            lat = coords.lat;
+            lng = coords.lng;
+        } catch (e) {
+            console.error("Auto geocoding failed during update:", e);
+        }
+    }
+
     try {
-        await db.query(
-            `UPDATE merchants SET name=$1, announcement=$2, description=$3, address=$4, "openingHours"=$5, "panoramaUrl"=$6 WHERE id=$7 AND "ownerId"=$8`,
-            [name, announcement, description, address, openingHours, panoramaUrl, req.params.id, ownerId]
-        );
+        if (lat && lng) {
+            await db.query(
+                `UPDATE merchants SET name=$1, announcement=$2, description=$3, address=$4, "openingHours"=$5, "panoramaUrl"=$6, "imageUrl"=$7, lat=$8, lng=$9 WHERE id=$10 AND "ownerId"=$11`,
+                [name, announcement, description, address, openingHours, panoramaUrl, imageUrl, lat, lng, req.params.id, ownerId]
+            );
+        } else {
+            await db.query(
+                `UPDATE merchants SET name=$1, announcement=$2, description=$3, address=$4, "openingHours"=$5, "panoramaUrl"=$6, "imageUrl"=$7 WHERE id=$8 AND "ownerId"=$9`,
+                [name, announcement, description, address, openingHours, panoramaUrl, imageUrl, req.params.id, ownerId]
+            );
+        }
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ error: err.message });

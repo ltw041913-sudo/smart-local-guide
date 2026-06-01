@@ -79,4 +79,31 @@ router.post('/login', async (req, res) => {
     }
 });
 
+// Upgrade user role to 'owner' after registering first store
+router.post('/upgrade-role', async (req, res) => {
+    const { userId, role } = req.body;
+
+    if (!userId || role !== 'owner') {
+        return res.status(400).json({ error: '無效的請求' });
+    }
+
+    try {
+        // Only allow consumer → owner upgrade (never demote admin)
+        const result = await db.query(
+            `UPDATE users SET role = $1 WHERE id = $2 AND role = 'consumer' RETURNING id, username, role`,
+            ['owner', userId]
+        );
+
+        if (result.rows.length === 0) {
+            // User might already be owner/admin — still return success
+            return res.json({ success: true, message: '角色無需變更' });
+        }
+
+        res.json({ success: true, user: result.rows[0] });
+    } catch (err) {
+        console.error('Upgrade role error:', err);
+        res.status(500).json({ error: '伺服器內部錯誤' });
+    }
+});
+
 module.exports = router;
