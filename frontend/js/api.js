@@ -56,11 +56,11 @@ const api = {
         return res.json();
     },
 
-    async generateAudioScript(merchant, persona, lang) {
+    async generateAudioScript(merchant, persona, lang, model) {
         const res = await fetch(`${API_BASE}/ai/generate-audio-script`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ merchant, persona, lang })
+            body: JSON.stringify({ merchant, persona, lang, model })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -70,11 +70,11 @@ const api = {
         return data.script;
     },
 
-    async refineAnnouncement(text, lang) {
+    async refineAnnouncement(text, lang, model) {
         const res = await fetch(`${API_BASE}/ai/refine-announcement`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text, lang })
+            body: JSON.stringify({ text, lang, model })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -83,11 +83,11 @@ const api = {
         return data.refinedText;
     },
 
-    async askBot(question, allMerchants, lang) {
+    async askBot(question, allMerchants, lang, model) {
         const res = await fetch(`${API_BASE}/ai/ask-bot`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ question, allMerchants, lang })
+            body: JSON.stringify({ question, allMerchants, lang, model })
         });
         const data = await res.json();
         if (!res.ok) {
@@ -96,11 +96,11 @@ const api = {
         return data.answer;
     },
 
-    async planTrip(allPlaces, duration, preferences, interests, lang, selectedPlaces) {
+    async planTrip(allPlaces, duration, preferences, interests, lang, selectedPlaces, model) {
         const res = await fetch(`${API_BASE}/ai/plan-trip`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ allPlaces, duration, preferences, interests, lang, selectedPlaces })
+            body: JSON.stringify({ allPlaces, duration, preferences, interests, lang, selectedPlaces, model })
         });
         const data = await res.json();
         return data.itinerary;

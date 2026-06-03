@@ -21,6 +21,12 @@
                 <option value="en">English</option>
                 <option value="ja">日本語</option>
             </select>
+            <select id="model-selector" onchange="app.changeModel(this.value)">
+                <option value="gemini-3.5-flash">Gemini 3.5 Flash</option>
+                <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
+                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite</option>
+            </select>
             <div id="auth-logged-out" style="display: flex; gap: 10px;">
                 <a href="login.html" class="btn btn-nav-outline" style="text-decoration: none; padding: 0.5rem 1rem; border: 1px solid var(--forest-green); color: var(--forest-green); background: white;">登入</a>
                 <a href="register.html" class="btn btn-primary" style="text-decoration: none; padding: 0.5rem 1rem;">註冊</a>
@@ -100,6 +106,11 @@
         <h2 data-i18n="modal_add_title">註冊新店家</h2>
         <div style="margin-top:1rem;">
             <p><span data-i18n="label_name">店名：</span><input type="text" id="add-name" class="search-box"></p>
+            <div style="display:flex; gap:10px; align-items:flex-start;">
+                <p style="flex:1; margin:0 0 0.8rem;"><span style="display:block; font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.3rem;">緯度 (Lat)：</span><input type="number" id="add-lat" class="search-box" step="any" placeholder="e.g. 23.9575" style="margin:0;"></p>
+                <p style="flex:1; margin:0 0 0.8rem;"><span style="display:block; font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.3rem;">經度 (Lng)：</span><input type="number" id="add-lng" class="search-box" step="any" placeholder="e.g. 120.6864" style="margin:0;"></p>
+            </div>
+            <p style="margin-top:-0.4rem; margin-bottom:0.8rem; font-size:0.75rem; color:var(--text-muted);">📌 填寫經緯度將優先用於導航定位；若經緯度留空，則使用地址進行導航。</p>
             <p><span data-i18n="label_category">類別：</span><input type="text" id="add-category" class="search-box"></p>
             <p><span data-i18n="label_address">地址：</span><input type="text" id="add-address" class="search-box"></p>
             <p><label data-i18n="label_hours"></label><input type="text" id="add-hours" class="search-box" placeholder="e.g. 09:00 - 18:00"></p>
@@ -139,6 +150,11 @@
         <h2 data-i18n="modal_edit_title">編輯店家</h2>
         <div style="margin-top:1rem;">
             <p><span data-i18n="label_name">店名：</span><input type="text" id="edit-name" class="search-box"></p>
+            <div style="display:flex; gap:10px; align-items:flex-start;">
+                <p style="flex:1; margin:0 0 0.8rem;"><span style="display:block; font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.3rem;">緯度 (Lat)：</span><input type="number" id="edit-lat" class="search-box" step="any" placeholder="e.g. 23.9575" style="margin:0;"></p>
+                <p style="flex:1; margin:0 0 0.8rem;"><span style="display:block; font-size:0.85rem; font-weight:700; color:var(--text-dark); margin-bottom:0.3rem;">經度 (Lng)：</span><input type="number" id="edit-lng" class="search-box" step="any" placeholder="e.g. 120.6864" style="margin:0;"></p>
+            </div>
+            <p style="margin-top:-0.4rem; margin-bottom:0.8rem; font-size:0.75rem; color:var(--text-muted);">📌 填寫經緯度將優先用於導航定位；若經緯度留空，則使用地址進行導航。</p>
             <p><span data-i18n="label_address">地址：</span><input type="text" id="edit-address" class="search-box"></p>
             <p><label data-i18n="label_hours"></label><input type="text" id="edit-hours" class="search-box"></p>
             <p><span data-i18n="label_image">封面照片：</span><input type="file" id="edit-image" accept="image/*" class="search-box" style="padding: 0.5rem;"></p>

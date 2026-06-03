@@ -3,8 +3,26 @@ const express = require('express');
 const router = express.Router();
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
+// ─── Shared Error Handler ───────────────────────────────────────────────────
+function handleAIError(res, error) {
+    console.error("AI Generation Error:", error);
+    const msg = error?.message || '';
+    if (msg.includes('429') || msg.includes('Too Many Requests') || msg.includes('quota')) {
+        return res.status(429).json({
+            error: '⚠️ AI 服務目前請求次數過多（免費額度已達上限）。請稍等幾分鐘後再試，或聯繫管理員升級 API 方案。'
+        });
+    }
+    if (msg.includes('503') || msg.includes('Service Unavailable')) {
+        return res.status(503).json({
+            error: '⚠️ AI 服務暫時無法使用，請稍後再試。'
+        });
+    }
+    return res.status(500).json({ error: msg || 'AI 發生未知錯誤，請稍後再試。' });
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 router.post('/plan-trip', async (req, res) => {
-    const { allPlaces, duration, preferences, interests, lang, selectedPlaces } = req.body;
+    const { allPlaces, duration, preferences, interests, lang, selectedPlaces, model: userModel } = req.body;
     
     if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'YOUR_GEMINI_API_KEY_HERE') {
         return res.status(500).json({ error: "API Key 尚未設定。請在 backend/.env 檔案中填寫您的 GEMINI_API_KEY" });
@@ -12,7 +30,8 @@ router.post('/plan-trip', async (req, res) => {
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const chosenModel = userModel || 'gemini-3.5-flash';
+        const model = genAI.getGenerativeModel({ model: chosenModel });
 
         const langMap = {
             'zh-TW': '繁體中文 (Traditional Chinese)',
@@ -52,19 +71,19 @@ router.post('/plan-trip', async (req, res) => {
 
         res.json({ itinerary: text });
     } catch (error) {
-        console.error("AI Generation Error:", error);
-        res.status(500).json({ error: "Failed to generate itinerary." });
+        handleAIError(res, error);
     }
 });
 
 router.post('/refine-announcement', async (req, res) => {
-    const { text, lang } = req.body;
+    const { text, lang, model: userModel } = req.body;
     
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const chosenModel = userModel || 'gemini-3.5-flash';
+        const model = genAI.getGenerativeModel({ model: chosenModel });
 
         const prompt = `
         你是一位專業的文化推廣與社群文案大師。
@@ -84,18 +103,19 @@ router.post('/refine-announcement', async (req, res) => {
         const result = await model.generateContent(prompt);
         res.json({ refinedText: (await result.response).text().trim() });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleAIError(res, error);
     }
 });
 
 router.post('/ask-bot', async (req, res) => {
-    const { question, allMerchants, lang } = req.body;
+    const { question, allMerchants, lang, model: userModel } = req.body;
     
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const chosenModel = userModel || 'gemini-3.5-flash';
+        const model = genAI.getGenerativeModel({ model: chosenModel });
 
         const prompt = `
         你是一位熱情且專業的「在地旅遊小助手」。你對當地的所有店家與文化瞭如指掌。
@@ -118,18 +138,19 @@ router.post('/ask-bot', async (req, res) => {
         const result = await model.generateContent(prompt);
         res.json({ answer: (await result.response).text().trim() });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleAIError(res, error);
     }
 });
 
 router.post('/plan-story', async (req, res) => {
-    const { name, category, tags, lang } = req.body;
+    const { name, category, tags, lang, model: userModel } = req.body;
     
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+        const chosenModel = userModel || 'gemini-3.5-flash';
+        const model = genAI.getGenerativeModel({ model: chosenModel });
 
         const langMap = { 'zh-TW': '繁體中文 (Traditional Chinese)', 'en': '英文 (English)', 'ja': '日文 (Japanese)' };
         const outputLang = langMap[lang] || '繁體中文';
@@ -153,18 +174,19 @@ router.post('/plan-story', async (req, res) => {
 
         res.json({ story: text });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleAIError(res, error);
     }
 });
 
 router.post('/analyze-reviews', async (req, res) => {
-    const { reviews, lang } = req.body;
+    const { reviews, lang, model: userModel } = req.body;
     if (!reviews || reviews.length === 0) return res.json({ summary: "No reviews to analyze." });
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const chosenModel = userModel || 'gemini-3.5-flash';
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-flash-latest",
+            model: chosenModel,
         });
         const prompt = `
             Analyze the following merchant reviews and provide a concise summary in ${lang}.
@@ -191,19 +213,20 @@ router.post('/analyze-reviews', async (req, res) => {
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         res.json(JSON.parse(jsonMatch ? jsonMatch[0] : text));
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        handleAIError(res, error);
     }
 });
 
 router.post('/generate-audio-script', async (req, res) => {
-    const { merchant, persona, lang } = req.body;
+    const { merchant, persona, lang, model: userModel } = req.body;
     
     if (!process.env.GEMINI_API_KEY) return res.status(500).json({ error: "API Key missing" });
 
     try {
         const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const chosenModel = userModel || 'gemini-3.5-flash';
         const model = genAI.getGenerativeModel({ 
-            model: "gemini-flash-latest",
+            model: chosenModel,
             safetySettings: [
                 { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
                 { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
@@ -253,8 +276,7 @@ router.post('/generate-audio-script', async (req, res) => {
 
         res.json({ script: text });
     } catch (error) {
-        console.error("AI Generation Error:", error);
-        res.status(500).json({ error: error.message || "Unknown AI error" });
+        handleAIError(res, error);
     }
 });
 

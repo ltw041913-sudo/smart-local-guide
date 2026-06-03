@@ -30,6 +30,11 @@ const app = {
     heroInterval: null,
 
     async init() {
+        this.currentModel = localStorage.getItem('selectedModel') || 'gemini-3.5-flash';
+        const modelSelector = document.getElementById('model-selector');
+        if (modelSelector) {
+            modelSelector.value = this.currentModel;
+        }
         this.applyTranslations();
         await this.checkAuthState();
         await this.loadMerchants();
@@ -47,6 +52,11 @@ const app = {
         document.documentElement.lang = lang;
         this.applyTranslations();
         this.renderMerchants();
+    },
+
+    changeModel(model) {
+        this.currentModel = model;
+        localStorage.setItem('selectedModel', model);
     },
 
     applyTranslations() {
@@ -213,6 +223,10 @@ const app = {
             const isOwner = this.currentUser && (this.currentUser.id === merchant.ownerId || this.currentUser.role === 'admin');
 
             const t = (key) => window.i18n.t(key);
+            const hasLat = merchant.lat !== null && merchant.lat !== undefined && merchant.lat !== '' && !isNaN(parseFloat(merchant.lat));
+            const hasLng = merchant.lng !== null && merchant.lng !== undefined && merchant.lng !== '' && !isNaN(parseFloat(merchant.lng));
+            const mapQuery = (hasLat && hasLng) ? `${merchant.lat},${merchant.lng}` : (merchant.address || '');
+
             content.innerHTML = `
                 <div class="detail-header" style="background-image: url('${getFullUrl(merchant.imageUrl)}')">
                     <h1 class="detail-title">${merchant.name}</h1>
@@ -259,7 +273,7 @@ const app = {
                             <p><strong>${t('info_hours')}:</strong> ${merchant.openingHours || t('info_not_provided')}</p>
                             <p><strong>${t('info_category')}:</strong> ${merchant.category}</p>
                             <div style="margin-top:1rem; height:200px; background:#eee; border-radius:8px; overflow:hidden;">
-                                <iframe width="100%" height="100%" frameborder="0" src="https://www.google.com/maps?q=${merchant.lat},${merchant.lng}(${encodeURIComponent(merchant.name)})&hl=zh-TW&z=15&output=embed"></iframe>
+                                <iframe width="100%" height="100%" frameborder="0" src="https://www.google.com/maps?q=${encodeURIComponent(mapQuery)}(${encodeURIComponent(merchant.name)})&hl=zh-TW&z=15&output=embed"></iframe>
                             </div>
                         </div>
                         ${isOwner ? `
@@ -389,6 +403,11 @@ const app = {
         const address = document.getElementById('add-address').value;
         const hours = document.getElementById('add-hours').value;
         
+        const manualLatVal = document.getElementById('add-lat').value.trim();
+        const manualLngVal = document.getElementById('add-lng').value.trim();
+        const manualLat = manualLatVal === '' ? null : parseFloat(manualLatVal);
+        const manualLng = manualLngVal === '' ? null : parseFloat(manualLngVal);
+        
         if (!name || !category) return alert(window.i18n.t('alert_required_fields'));
 
         try {
@@ -423,7 +442,12 @@ const app = {
                 imageUrl = uploadRes.filePath;
             }
             
-            await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, panoramaUrl, imageUrl });
+            // 傳送經緯度給後端（若留空則為 null）
+            const coordsPayload = {
+                lat: (manualLat !== null && !isNaN(manualLat)) ? manualLat : null,
+                lng: (manualLng !== null && !isNaN(manualLng)) ? manualLng : null
+            };
+            await api.createMerchant({ name, category, address, openingHours: hours, ownerId: this.currentUser.id, panoramaUrl, imageUrl, ...coordsPayload });
             
             // Auto-upgrade role to 'owner' after registering first store
             if (this.currentUser.role !== 'admin' && this.currentUser.role !== 'owner') {
@@ -451,6 +475,8 @@ const app = {
                 return;
             }
             document.getElementById('edit-name').value = m.name || '';
+            document.getElementById('edit-lat').value = m.lat || '';
+            document.getElementById('edit-lng').value = m.lng || '';
             document.getElementById('edit-address').value = m.address || '';
             document.getElementById('edit-hours').value = m.openingHours || '';
             document.getElementById('edit-announcement').value = m.announcement || '';
@@ -504,6 +530,11 @@ const app = {
         const hours = document.getElementById('edit-hours').value;
         const announcement = document.getElementById('edit-announcement').value;
         const description = document.getElementById('edit-description').value;
+        
+        const manualLatVal = document.getElementById('edit-lat').value.trim();
+        const manualLngVal = document.getElementById('edit-lng').value.trim();
+        const latToSend = manualLatVal === '' ? null : parseFloat(manualLatVal);
+        const lngToSend = manualLngVal === '' ? null : parseFloat(manualLngVal);
 
         try {
             let targetMerchant = this.merchants.find(m => m.id == id);
@@ -539,8 +570,12 @@ const app = {
                 imageUrl = uploadRes.filePath;
             }
 
+            // 傳送經緯度給後端（若留空則為 null）
+            const finalLat = (latToSend !== null && !isNaN(latToSend)) ? latToSend : null;
+            const finalLng = (lngToSend !== null && !isNaN(lngToSend)) ? lngToSend : null;
+
             // 使用原本店家的 ownerId，這樣即便 admin 去編輯也不會因為身分不符而 SQL 失敗
-            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: targetMerchant.ownerId, panoramaUrl, imageUrl });
+            await api.updateMerchant(id, { name, address, openingHours: hours, announcement, description, ownerId: targetMerchant.ownerId, panoramaUrl, imageUrl, lat: finalLat, lng: finalLng });
             
             // 1. Reload global data to sync list and hero
             await this.loadMerchants();
@@ -616,15 +651,23 @@ const app = {
             const endTime = endTimeInput ? endTimeInput.value : '18:00';
             const durationString = `${startTime} ~ ${endTime}`;
             
-            const itinerary = await api.planTrip(selectedData, durationString, '', [], window.i18n ? window.i18n.currentLang : 'zh-TW', selectedNames);
+            const itinerary = await api.planTrip(selectedData, durationString, '', [], window.i18n ? window.i18n.currentLang : 'zh-TW', selectedNames, this.currentModel);
 
-            // Build a 100% reliable Google Maps URL using strictly the physical address (or coordinates as fallback)
-            // as requested by the user, avoiding any coordinate reverse-geocoding issues
+            // Build a Google Maps URL prioritizing coordinates if they are filled, otherwise using physical address
+            const getNavTarget = (p) => {
+                const hasLat = p.lat !== null && p.lat !== undefined && p.lat !== '' && !isNaN(parseFloat(p.lat));
+                const hasLng = p.lng !== null && p.lng !== undefined && p.lng !== '' && !isNaN(parseFloat(p.lng));
+                if (hasLat && hasLng) {
+                    return `${p.lat},${p.lng}`;
+                }
+                return p.address ? p.address.trim() : '';
+            };
+
             const destination = selectedData[selectedData.length - 1];
             const midpoints = selectedData.slice(0, -1);
             
-            const destStr = destination.address ? destination.address.trim() : `${destination.lat},${destination.lng}`;
-            const waypointsList = midpoints.map(p => p.address ? p.address.trim() : `${p.lat},${p.lng}`);
+            const destStr = getNavTarget(destination);
+            const waypointsList = midpoints.map(p => getNavTarget(p)).filter(Boolean);
             const waypointsStr = waypointsList.join('|');
             
             const correctMapsUrl = `https://www.google.com/maps/dir/?api=1&origin=My+Location&destination=${encodeURIComponent(destStr)}${waypointsStr ? '&waypoints=' + encodeURIComponent(waypointsStr) : ''}&travelmode=driving`;
@@ -670,7 +713,7 @@ const app = {
 
         try {
             const lang = window.i18n ? window.i18n.currentLang : 'zh-TW';
-            const refined = await api.refineAnnouncement(text, lang);
+            const refined = await api.refineAnnouncement(text, lang, this.currentModel);
             input.value = refined;
         } catch (e) {
             alert(e.message);
@@ -713,7 +756,7 @@ const app = {
 
         try {
             const lang = window.i18n ? window.i18n.currentLang : 'zh-TW';
-            const answer = await api.askBot(text, this.merchants, lang);
+            const answer = await api.askBot(text, this.merchants, lang, this.currentModel);
             botBubble.innerHTML = answer;
         } catch (e) {
             botBubble.innerHTML = e.message;
@@ -752,7 +795,7 @@ const app = {
             const lang = window.i18n.currentLang;
             statusDiv.innerHTML = `<i>${window.i18n.t('audio_generating')}</i>`;
             
-            const script = await api.generateAudioScript(merchant, persona, lang);
+            const script = await api.generateAudioScript(merchant, persona, lang, this.currentModel);
             
             statusDiv.innerHTML = `<div class="audio-waves"><span></span><span></span><span></span><span></span></div> ${window.i18n.t('audio_playing')}`;
             
